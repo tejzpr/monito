@@ -16,7 +16,7 @@
                 "timeout": "10s",
                 "maxConcurrentRequests": 1,
                 "maxRetries": -1, 
-                "notifyRateLimit": "10s"
+                "notifyRateLimit": "3s"
             }
         ]
     }

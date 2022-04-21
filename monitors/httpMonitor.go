@@ -103,8 +103,8 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 					continue
 				}
 				m.logger.Debugf("Running monitor: %s", m.name)
-				m.g.Go(m.run)
-				if err := m.g.Wait(); err != nil {
+				err := m.run()
+				if err != nil {
 					m.logger.Errorf(err, "Error running monitor: %s", m.name)
 					if m.maxRetries > 0 && m.retryCounter < m.maxRetries {
 						m.retryCounter++
