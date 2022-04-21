@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
-	"time"
 
 	"github.com/spf13/viper"
+	"github.com/tejzpr/monito/appconfig"
 	"github.com/tejzpr/monito/log"
 	"github.com/tejzpr/monito/monitors"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -27,22 +29,54 @@ func main() {
 
 	log.Info("Starting monito")
 
-	monitor1, err := monitors.NewHTTPMonitor(
-		"A Monitor",
-		log.Logger(),
-		2*time.Second,
-		10*time.Second,
-		1,
-		0,
-		&monitors.HTTPConfig{
-			URL:                "http://localhost:8080/ping",
-			Method:             "GET",
-			ExpectedBody:       ".",
-			ExpectedStatusCode: 200,
-		},
-	)
-	if err != nil {
-		log.Fatalf("fatal error creating monitor: %s \n", err)
+	var errGrp errgroup.Group
+
+	configuredMonitors := make(map[string]monitors.Monitor, 0)
+
+	monitorsConfig := viper.GetStringMap("monitors")
+	for monitorName, monitorConfigs := range monitorsConfig {
+		log.Info("Starting monitors for", monitorName)
+		mConfigArray := (monitorConfigs).([]interface{})
+		for _, monitorConfig := range mConfigArray {
+			if configuredMonitors[monitorName] != nil {
+				log.Fatal("Monitor", monitorName, "already configured")
+				return
+			}
+			jsonBody, err := json.Marshal(monitorConfig)
+			if err != nil {
+				log.Errorf(err, "Error marshalling config for monitor %s", monitorName)
+				return
+			}
+			var mConfig appconfig.HTTPConfig
+			if err := json.Unmarshal(jsonBody, &mConfig); err != nil {
+				log.Errorf(err, "Error unmarshalling config for monitor %s", monitorName)
+				return
+			}
+			monitor, err := monitors.NewHTTPMonitor(
+				mConfig.Name,
+				mConfig.Interval.Duration,
+				mConfig.Timeout.Duration,
+				mConfig.MaxConcurrentRequests,
+				mConfig.MaxRetries,
+				&monitors.HTTP{
+					URL:                mConfig.URL,
+					Method:             mConfig.Method,
+					ExpectedBody:       mConfig.ExpectedResponseBody,
+					ExpectedStatusCode: mConfig.ExpectedStatusCode,
+				},
+				log.Logger(),
+			)
+			if err != nil {
+				log.Fatalf("fatal error creating monitor: %s \n", err)
+			}
+			errGrp.Go(func() error {
+				return monitor.Run(context.Background())
+			})
+			configuredMonitors[mConfig.Name] = monitor
+		}
 	}
-	monitor1.Run(context.Background())
+	if err := errGrp.Wait(); err != nil {
+		log.Fatalf("fatal error running monitors: %s \n", err)
+	}
+	return
 }

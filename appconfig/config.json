@@ -1,3 +1,22 @@
 {
-    "logLevel": "debug"
+    "logLevel": "debug",
+    "monitors": {
+        "http": [
+            {
+                "name": "http",
+                "type": "http",
+                "url": "http://localhost:8080/ping",
+                "expectedStatusCode": 200,
+                "expectedResponseBody": ".",
+                "headers": {
+                    "Authorization": "Basic TEST"
+                },
+                "method": "GET",
+                "interval": "2s",
+                "timeout": "10s",
+                "maxConcurrentRequests": 1,
+                "maxRetries": -1
+            }
+        ]
+    }
 }

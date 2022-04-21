@@ -16,8 +16,8 @@ import (
 // Language: go
 // Path: monitors/httpMonitor.go
 
-// HTTPConfig is the config for the HTTP monitor
-type HTTPConfig struct {
+// HTTP is the config for the HTTP monitor
+type HTTP struct {
 	// URL is the URL to monitor
 	URL string `json:"url"`
 	// Method is the HTTP method to use
@@ -36,7 +36,7 @@ type HTTPConfig struct {
 // it implements the Monitor interface
 type HTTPMonitor struct {
 	name                  string
-	config                *HTTPConfig
+	config                *HTTP
 	logger                Logger
 	interval              time.Duration
 	timeOut               time.Duration
@@ -102,16 +102,16 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 					m.logger.Error(err)
 					continue
 				}
-				m.logger.Debugf("Running monitor %s", m.name)
+				m.logger.Debugf("Running monitor: %s", m.name)
 				m.g.Go(m.run)
 				if err := m.g.Wait(); err != nil {
-					m.logger.Errorf(err, "Error running monitor %s", m.name)
+					m.logger.Errorf(err, "Error running monitor: %s", m.name)
 					if m.maxRetries > 0 && m.retryCounter < m.maxRetries {
 						m.retryCounter++
-						m.logger.Infof("Retrying monitor %s", m.name)
+						m.logger.Infof("Retrying monitor: %s", m.name)
 						continue
 					} else if m.maxRetries > 0 && m.retryCounter >= m.maxRetries {
-						m.logger.Infof("Max retries reached for monitor %s", m.name)
+						m.logger.Infof("Max retries reached for monitor: %s", m.name)
 						returnerr = err
 						return
 					} else {
@@ -133,8 +133,8 @@ func (m *HTTPMonitor) HandleFailure(err error) {
 // run runs the monitor
 func (m *HTTPMonitor) run() error {
 	defer m.sem.Release(1)
-	defer recover()
-	m.logger.Debugf("Running HTTP Request for monitor %s", m.name)
+
+	m.logger.Debugf("Running HTTP Request for monitor: %s", m.name)
 	req, err := http.NewRequest(m.config.Method, m.config.URL, bytes.NewBuffer([]byte(m.config.Body)))
 
 	if err != nil {
@@ -186,7 +186,7 @@ func (m *HTTPMonitor) Config() interface{} {
 
 // SetConfig sets the config for the monitor
 func (m *HTTPMonitor) SetConfig(config interface{}) error {
-	conf := config.(*HTTPConfig)
+	conf := config.(*HTTP)
 	if conf.URL == "" {
 		return errors.New("URL is required")
 	} else if conf.Method == "" {
@@ -263,7 +263,7 @@ func (m *HTTPMonitor) Stop() {
 }
 
 // NewHTTPMonitor creates a new HTTP monitor
-func NewHTTPMonitor(name string, logger Logger, runInterval time.Duration, timeOut time.Duration, maxConcurrentRequests int, maxRetries int, config *HTTPConfig) (Monitor, error) {
+func NewHTTPMonitor(name string, runInterval time.Duration, timeOut time.Duration, maxConcurrentRequests int, maxRetries int, config *HTTP, logger Logger) (Monitor, error) {
 	httpMonitor := &HTTPMonitor{}
 	httpMonitor.SetName(name)
 	if config.Method == "" {
