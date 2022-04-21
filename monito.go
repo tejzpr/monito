@@ -38,7 +38,7 @@ func main() {
 
 	monitorsConfig := viper.GetStringMap("monitors")
 	for monitorName, monitorConfigs := range monitorsConfig {
-		log.Info("Starting monitors for", monitorName)
+		log.Info("Starting monitors for: ", monitorName)
 		mConfigArray := (monitorConfigs).([]interface{})
 		for _, monitorConfig := range mConfigArray {
 			if configuredMonitors[monitorName] != nil {
