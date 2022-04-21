@@ -62,6 +62,10 @@ func main() {
 				mConfig.Timeout.Duration,
 				mConfig.MaxConcurrentRequests,
 				mConfig.MaxRetries,
+				mConfig.NotifyRateLimit.Duration,
+				func(err error) {
+					log.Errorf(err, "Monitor %s failed", monitorName)
+				},
 				&monitors.HTTP{
 					URL:                mConfig.URL,
 					Method:             mConfig.Method,

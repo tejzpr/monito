@@ -54,4 +54,5 @@ type HTTPConfig struct {
 	Timeout               Duration         `json:"timeout"`
 	MaxConcurrentRequests int              `json:"maxConcurrentRequests"`
 	MaxRetries            int              `json:"maxRetries"`
+	NotifyRateLimit       Duration         `json:"notifyRateLimit"`
 }

@@ -11,10 +11,8 @@ import (
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
+	"golang.org/x/time/rate"
 )
-
-// Language: go
-// Path: monitors/httpMonitor.go
 
 // HTTP is the config for the HTTP monitor
 type HTTP struct {
@@ -47,6 +45,8 @@ type HTTPMonitor struct {
 	sem                   *semaphore.Weighted
 	httpClient            *http.Client
 	setupOnce             sync.Once
+	notifyLimiter         *rate.Limiter
+	notifyHandler         func(err error)
 	maxConcurrentRequests int
 	maxRetries            int
 	retryCounter          int
@@ -124,10 +124,21 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 	return returnerr
 }
 
+// SetNotifyHandler sets the notify handler for the monitor
+func (m *HTTPMonitor) SetNotifyHandler(notifyHandler func(err error)) {
+	m.notifyHandler = notifyHandler
+}
+
 // HandleFailure handles a failure
 func (m *HTTPMonitor) HandleFailure(err error) error {
-	// Handle debounce
-	m.logger.Error(err)
+	m.logger.Debugf("Monitor failed with error %s", err.Error())
+	if m.notifyHandler != nil {
+		if m.notifyLimiter == nil {
+			m.notifyHandler(err)
+		} else if m.notifyLimiter.Allow() {
+			m.notifyHandler(err)
+		}
+	}
 	return nil
 }
 
@@ -258,13 +269,22 @@ func (m *HTTPMonitor) SetMaxRetries(maxRetries int) {
 	m.maxRetries = maxRetries
 }
 
+// SetNotifyRateLimit sets the notify rate limit for the monitor
+func (m *HTTPMonitor) SetNotifyRateLimit(notifyRateLimit time.Duration) {
+	if notifyRateLimit < 0 {
+		notifyRateLimit = 0
+	}
+	n := rate.Every(notifyRateLimit)
+	m.notifyLimiter = rate.NewLimiter(n, 1)
+}
+
 // Stop stops the monitor
 func (m *HTTPMonitor) Stop() {
 	m.stopChannel <- true
 }
 
 // NewHTTPMonitor creates a new HTTP monitor
-func NewHTTPMonitor(name string, runInterval time.Duration, timeOut time.Duration, maxConcurrentRequests int, maxRetries int, config *HTTP, logger Logger) (Monitor, error) {
+func NewHTTPMonitor(name string, runInterval time.Duration, timeOut time.Duration, maxConcurrentRequests int, maxRetries int, notifyRateLimit time.Duration, notifyHandler func(err error), config *HTTP, logger Logger) (Monitor, error) {
 	httpMonitor := &HTTPMonitor{}
 	httpMonitor.SetName(name)
 	if config.Method == "" {
@@ -283,5 +303,7 @@ func NewHTTPMonitor(name string, runInterval time.Duration, timeOut time.Duratio
 	httpMonitor.SetTimeOut(timeOut)
 	httpMonitor.SetMaxConcurrentRequests(maxConcurrentRequests)
 	httpMonitor.SetMaxRetries(maxRetries)
+	httpMonitor.SetNotifyRateLimit(notifyRateLimit)
+	httpMonitor.SetNotifyHandler(notifyHandler)
 	return httpMonitor, nil
 }

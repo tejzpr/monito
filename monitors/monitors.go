@@ -41,8 +41,11 @@ type Monitor interface {
 	TimeOut() time.Duration
 	// SetMaxRetries sets the max retries for the monitor
 	SetMaxRetries(maxRetries int)
-	// HandleFailure handles the failure of the monitor
-	HandleFailure(err error) error
+	// SetNotifyHandler handles the notification failure of the monitor
+	// Calls to this function should be non-blocking
+	SetNotifyHandler(notifyHandler func(err error))
+	// SetNotifyRateLimit sets the notify rate limit for the monitor
+	SetNotifyRateLimit(notifyRateLimit time.Duration)
 }
 
 // Logger is the interface of the logger for the monitor

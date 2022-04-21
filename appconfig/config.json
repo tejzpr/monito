@@ -7,7 +7,7 @@
                 "type": "http",
                 "url": "http://localhost:8080/ping",
                 "expectedStatusCode": 200,
-                "expectedResponseBody": "",
+                "expectedResponseBody": "w",
                 "headers": {
                     "Authorization": "Basic TEST"
                 },
@@ -15,7 +15,8 @@
                 "interval": "2s",
                 "timeout": "10s",
                 "maxConcurrentRequests": 1,
-                "maxRetries": -1
+                "maxRetries": -1, 
+                "notifyRateLimit": "10s"
             }
         ]
     }
