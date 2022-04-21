@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 
 	"github.com/spf13/viper"
 	"github.com/tejzpr/monito/appconfig"
 	"github.com/tejzpr/monito/log"
 	"github.com/tejzpr/monito/monitors"
-	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -29,7 +32,7 @@ func main() {
 
 	log.Info("Starting monito")
 
-	var errGrp errgroup.Group
+	var monitorWG sync.WaitGroup
 
 	configuredMonitors := make(map[string]monitors.Monitor, 0)
 
@@ -69,14 +72,29 @@ func main() {
 			if err != nil {
 				log.Fatalf("fatal error creating monitor: %s \n", err)
 			}
-			errGrp.Go(func() error {
+			monitorWG.Add(1)
+			go func() error {
+				defer func() {
+					log.Info("Stopped monitor", mConfig.Name)
+					monitorWG.Done()
+				}()
 				return monitor.Run(context.Background())
-			})
+			}()
 			configuredMonitors[mConfig.Name] = monitor
 		}
 	}
-	if err := errGrp.Wait(); err != nil {
-		log.Fatalf("fatal error running monitors: %s \n", err)
-	}
-	return
+	stopper := make(chan os.Signal)
+	signal.Notify(stopper, syscall.SIGTERM)
+	signal.Notify(stopper, syscall.SIGINT)
+
+	go func() {
+		<-stopper
+		log.Info("Stopping monito...")
+		for _, monitor := range configuredMonitors {
+			monitor.Stop()
+		}
+	}()
+
+	monitorWG.Wait()
+	log.Info("Stopped monito")
 }
