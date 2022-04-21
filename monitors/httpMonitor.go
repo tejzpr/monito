@@ -125,9 +125,10 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 }
 
 // HandleFailure handles a failure
-func (m *HTTPMonitor) HandleFailure(err error) {
+func (m *HTTPMonitor) HandleFailure(err error) error {
 	// Handle debounce
 	m.logger.Error(err)
+	return nil
 }
 
 // run runs the monitor
@@ -149,20 +150,20 @@ func (m *HTTPMonitor) run() error {
 	if err != nil {
 		return err
 	} else if resp.StatusCode != m.config.ExpectedStatusCode {
-		m.HandleFailure(err)
+		return m.HandleFailure(errors.New("Status code does not match"))
 	}
 
 	if m.config.ExpectedBody != "" {
 		if resp.Body == nil {
-			m.HandleFailure(errors.New("Expected body but got nil"))
+			return m.HandleFailure(errors.New("Expected body but got nil"))
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			m.HandleFailure(err)
+			return m.HandleFailure(err)
 		}
 		if string(body) != m.config.ExpectedBody {
-			m.HandleFailure(errors.New("Expected body does not match"))
+			return m.HandleFailure(errors.New("Expected body does not match"))
 		}
 	}
 

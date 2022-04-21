@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/tejzpr/monito/appconfig"
@@ -75,7 +76,7 @@ func main() {
 			monitorWG.Add(1)
 			go func() error {
 				defer func() {
-					log.Info("Stopped monitor", mConfig.Name)
+					log.Info("Stopped monitor: ", mConfig.Name)
 					monitorWG.Done()
 				}()
 				return monitor.Run(context.Background())
@@ -90,11 +91,26 @@ func main() {
 	go func() {
 		<-stopper
 		log.Info("Stopping monito...")
-		for _, monitor := range configuredMonitors {
-			monitor.Stop()
+		closeMonitorsChan := make(chan struct{})
+
+		go func() {
+			for _, monitor := range configuredMonitors {
+				monitor.Stop()
+			}
+		}()
+
+		timer := time.NewTimer(10 * time.Second)
+		select {
+		case <-timer.C:
+			log.Info("Timed out waiting for monitors to stop")
+			log.Info("Exiting.")
+			os.Exit(1)
+		case <-closeMonitorsChan:
+			log.Info("Monitors stopped")
 		}
+
 	}()
 
 	monitorWG.Wait()
-	log.Info("Stopped monito")
+	log.Info("Exiting.")
 }

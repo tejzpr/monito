@@ -42,7 +42,7 @@ type Monitor interface {
 	// SetMaxRetries sets the max retries for the monitor
 	SetMaxRetries(maxRetries int)
 	// HandleFailure handles the failure of the monitor
-	HandleFailure(err error)
+	HandleFailure(err error) error
 }
 
 // Logger is the interface of the logger for the monitor
