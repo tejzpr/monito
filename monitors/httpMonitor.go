@@ -88,7 +88,7 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 			}
 		}
 
-		m.logger.Infof("Starting monitor %s", m.name)
+		m.logger.Infof("Started monitor %s", m.name)
 		for {
 			select {
 			case <-ctx.Done():
