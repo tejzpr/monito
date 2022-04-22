@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -11,12 +12,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
 	"github.com/tejzpr/monito/log"
 	"github.com/tejzpr/monito/monitors"
 	"github.com/tejzpr/monito/notifiers"
 	"github.com/tejzpr/monito/utils"
 )
+
+const defaultPrometheusPort = 2112
 
 func main() {
 	replacer := strings.NewReplacer(".", "_")
@@ -34,6 +38,18 @@ func main() {
 	log.SetLogLevel(viper.GetString("logLevel"))
 
 	log.Info("Starting monito")
+
+	if viper.GetBool("prometheus.enabled") {
+		prometheusPort := viper.GetInt("prometheus.port")
+		if prometheusPort == 0 {
+			prometheusPort = defaultPrometheusPort
+		}
+		prometheusPortStr := fmt.Sprintf("127.0.0.1:%d", prometheusPort)
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			http.ListenAndServe(prometheusPortStr, nil)
+		}()
+	}
 
 	// Initialize the notifiers
 	notifierConfig := viper.GetStringMap("notifiers")
