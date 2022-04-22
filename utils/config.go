@@ -64,7 +64,6 @@ type NotifyConfig struct {
 // HTTPConfig is the config for the HTTP monitor
 type HTTPConfig struct {
 	Name                  monitors.MonitorName `json:"name"`
-	Type                  string               `json:"type"`
 	URL                   string               `json:"url"`
 	Method                string               `json:"method"`
 	Headers               HTTPConfigHeader     `json:"headers"`

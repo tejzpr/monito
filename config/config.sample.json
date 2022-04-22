@@ -1,12 +1,17 @@
 {
     "logLevel": "info",
+    "metrics": {
+        "enablePrometheus":true,
+        "port": 8430
+    },
+   
     "notifiers": {
         "webex": {
-            "enabled": false,
+            "enabled": true,
             "accessToken": ""
         },
         "smtp": {
-            "enabled": false,
+            "enabled": true,
             "host": "outbound.test.com",
             "port": 25,
             "tls": false,
@@ -16,11 +21,10 @@
     "monitors": {
         "http": [
             {
-                "name": "http",
-                "type": "http",
+                "name": "LOCALHOST_8080",
                 "url": "http://localhost:8080/ping",
                 "expectedStatusCode": 200,
-                "expectedResponseBody": "w",
+                "expectedResponseBody": ".",
                 "headers": {
                     "Authorization": "Basic TEST"
                 },
@@ -29,10 +33,10 @@
                 "timeout": "10s",
                 "maxConcurrentRequests": 1,
                 "maxRetries": -1, 
-                "notifyRateLimit": "10m",
+                "notifyRateLimit": "30m",
                 "notifyDetails" : {
                     "webex": {
-                        "roomId": "test"
+                        "roomId": ""
                     },
                     "smtp": {
                         "to": [],
