@@ -48,6 +48,7 @@ type HTTPMonitor struct {
 	sem                   *semaphore.Weighted
 	httpClient            *http.Client
 	setupOnce             sync.Once
+	notifyRateLimit       rate.Limit
 	notifyLimiter         *rate.Limiter
 	state                 *State
 	notifyHandler         func(state *State, err error)
@@ -135,6 +136,7 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 					if m.state.Current == StateStatusError {
 						m.state.Update(StateStatusOK)
 						m.notifyHandler(m.state, nil)
+						m.resetNotifyLimiter()
 					}
 				}
 			}
@@ -315,8 +317,12 @@ func (m *HTTPMonitor) SetNotifyRateLimit(notifyRateLimit time.Duration) {
 	if notifyRateLimit < 0 {
 		notifyRateLimit = 0
 	}
-	n := rate.Every(notifyRateLimit)
-	m.notifyLimiter = rate.NewLimiter(n, 1)
+	m.notifyRateLimit = rate.Every(notifyRateLimit)
+	m.resetNotifyLimiter()
+}
+
+func (m *HTTPMonitor) resetNotifyLimiter() {
+	m.notifyLimiter = rate.NewLimiter(m.notifyRateLimit, 1)
 }
 
 // Stop stops the monitor
