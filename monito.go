@@ -38,23 +38,6 @@ func main() {
 
 	log.Info("Starting monito")
 
-	metricsPort := 2112
-	isMetricsEnabled := false
-	if viper.GetInt("metrics.port") > 0 {
-		metricsPort = viper.GetInt("metrics.port")
-	}
-	metricsServerString := fmt.Sprintf("127.0.0.1:%d", metricsPort)
-	if viper.GetBool("metrics.enablePrometheus") {
-		isMetricsEnabled = true
-		http.Handle("/metrics", promhttp.Handler())
-		log.Info("Metrics enabled on port: ", metricsPort)
-	}
-	if isMetricsEnabled {
-		go func() {
-			http.ListenAndServe(metricsServerString, nil)
-		}()
-	}
-
 	// Initialize the notifiers
 	notifierConfig := viper.GetStringMap("notifiers")
 	log.Info("Initializing notifiers")
@@ -79,10 +62,6 @@ func main() {
 		log.Info("Starting monitors for: ", monitorName)
 		mConfigArray := (monitorConfigs).([]interface{})
 		for _, monitorConfig := range mConfigArray {
-			if configuredMonitors[monitorName] != nil {
-				log.Fatal("Monitor already configured: ", monitorName)
-				return
-			}
 			jsonBody, err := json.Marshal(monitorConfig)
 			if err != nil {
 				log.Errorf(err, "Error marshalling config for monitor: %s", monitorName)
@@ -93,6 +72,13 @@ func main() {
 				log.Errorf(err, "Error unmarshalling config for monitor: %s", monitorName)
 				return
 			}
+			if mConfig.Name.String() == "" {
+				log.Fatal("Monitor name is empty")
+			}
+			if configuredMonitors[mConfig.Name.String()] != nil {
+				log.Fatal("Monitor already configured: ", monitorName)
+			}
+
 			monitor, err := monitors.NewHTTPMonitor(
 				mConfig.Name,
 				mConfig.Interval.Duration,
@@ -183,6 +169,7 @@ func main() {
 					ExpectedBody:       mConfig.ExpectedResponseBody,
 					ExpectedStatusCode: mConfig.ExpectedStatusCode,
 				},
+				viper.GetBool("metrics.enablePrometheus"),
 				log.Logger(),
 			)
 			if err != nil {
@@ -196,7 +183,7 @@ func main() {
 				}()
 				return monitor.Run(context.Background())
 			}()
-			configuredMonitors[mConfig.Name] = monitor
+			configuredMonitors[mConfig.Name.String()] = monitor
 		}
 	}
 	stopper := make(chan os.Signal)
@@ -223,6 +210,26 @@ func main() {
 		}
 
 	}()
+
+	// Setup Metrics
+	metricsPort := 8430
+	isMetricsEnabled := false
+	if viper.GetInt("metrics.port") > 0 {
+		metricsPort = viper.GetInt("metrics.port")
+	}
+	metricsServerString := fmt.Sprintf("127.0.0.1:%d", metricsPort)
+	if viper.GetBool("metrics.enablePrometheus") {
+		isMetricsEnabled = true
+		http.Handle("/metrics", promhttp.Handler())
+		log.Info("Metrics enabled on port: ", metricsPort)
+	}
+	if isMetricsEnabled {
+		go func() {
+			http.ListenAndServe(metricsServerString, nil)
+		}()
+	}
+
+	// End Metrics Setup
 
 	monitorWG.Wait()
 	<-closeMonitorsChan

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/tejzpr/monito/monitors"
 )
 
 // Duration is a wrapper for time.Duration
@@ -61,17 +63,17 @@ type NotifyConfig struct {
 
 // HTTPConfig is the config for the HTTP monitor
 type HTTPConfig struct {
-	Name                  string           `json:"name"`
-	Type                  string           `json:"type"`
-	URL                   string           `json:"url"`
-	Method                string           `json:"method"`
-	Headers               HTTPConfigHeader `json:"headers"`
-	ExpectedStatusCode    int              `json:"expectedStatusCode"`
-	ExpectedResponseBody  string           `json:"expectedResponseBody"`
-	Interval              Duration         `json:"interval"`
-	Timeout               Duration         `json:"timeout"`
-	MaxConcurrentRequests int              `json:"maxConcurrentRequests"`
-	MaxRetries            int              `json:"maxRetries"`
-	NotifyRateLimit       Duration         `json:"notifyRateLimit"`
-	NotifyDetails         NotifyConfig     `json:"notifyDetails"`
+	Name                  monitors.MonitorName `json:"name"`
+	Type                  string               `json:"type"`
+	URL                   string               `json:"url"`
+	Method                string               `json:"method"`
+	Headers               HTTPConfigHeader     `json:"headers"`
+	ExpectedStatusCode    int                  `json:"expectedStatusCode"`
+	ExpectedResponseBody  string               `json:"expectedResponseBody"`
+	Interval              Duration             `json:"interval"`
+	Timeout               Duration             `json:"timeout"`
+	MaxConcurrentRequests int                  `json:"maxConcurrentRequests"`
+	MaxRetries            int                  `json:"maxRetries"`
+	NotifyRateLimit       Duration             `json:"notifyRateLimit"`
+	NotifyDetails         NotifyConfig         `json:"notifyDetails"`
 }

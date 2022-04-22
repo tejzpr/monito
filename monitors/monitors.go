@@ -3,10 +3,21 @@ package monitors
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/tejzpr/monito/log"
 )
+
+var isStringAlphabetic = regexp.MustCompile(`^[a-zA-Z0-9_]*$`).MatchString
+var symbolsRegexp = regexp.MustCompile(`[^\w]`)
+
+// MonitorName is a string that represents the name of the monitor
+type MonitorName string
+
+func (m MonitorName) String() string {
+	return symbolsRegexp.ReplaceAllString(string(m), "_")
+}
 
 // Monitor is an interface that all monoitors must implement
 type Monitor interface {
@@ -15,9 +26,9 @@ type Monitor interface {
 	// Stop stops the monitor
 	Stop()
 	// Name returns the name of the monitor
-	Name() string
+	Name() MonitorName
 	// SetName sets the name of the monitor
-	SetName(name string)
+	SetName(name MonitorName)
 	// SetConfig sets the config for the monitor
 	SetConfig(config interface{}) error
 	// Config returns the config for the monitor
@@ -49,6 +60,8 @@ type Monitor interface {
 	SetNotifyRateLimit(notifyRateLimit time.Duration)
 	// GetState returns the state of the monitor
 	GetState() *State
+	// SetEnableMetrics sets the metrics enabled flag for the monitor
+	SetEnableMetrics(enableMetrics bool)
 }
 
 // StateStatus is the state of the monitor

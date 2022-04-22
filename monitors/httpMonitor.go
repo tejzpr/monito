@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/time/rate"
@@ -36,7 +38,7 @@ type HTTP struct {
 // HTTPMonitor is a monitor that monitors http endpoints
 // it implements the Monitor interface
 type HTTPMonitor struct {
-	name                  string
+	name                  MonitorName
 	config                *HTTP
 	logger                Logger
 	interval              time.Duration
@@ -49,6 +51,8 @@ type HTTPMonitor struct {
 	httpClient            *http.Client
 	setupOnce             sync.Once
 	notifyRateLimit       rate.Limit
+	metricsEnabled        bool
+	metrics               *HTTPMetrics
 	notifyLimiter         *rate.Limiter
 	state                 *State
 	notifyHandler         func(state *State, err error)
@@ -57,12 +61,39 @@ type HTTPMonitor struct {
 	retryCounter          int
 }
 
+// HTTPMetrics the metrics for the monitor
+type HTTPMetrics struct {
+	ServiceStatusGauge prometheus.Gauge
+}
+
+// StartSericeStatusGauge initializes the service status gauge
+func (hm *HTTPMetrics) StartSericeStatusGauge(name string) {
+	hm.ServiceStatusGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "monito",
+		Subsystem: "http_metrics",
+		Name:      "is_service_up_" + name,
+		Help:      "Provides status of the service, 0 = down, 1 = up",
+	})
+	hm.ServiceStatusGauge.Set(1)
+}
+
+// ServiceDown handles the service down
+func (hm *HTTPMetrics) ServiceDown() {
+	hm.ServiceStatusGauge.Dec()
+}
+
+// ServiceUp handles the service down
+func (hm *HTTPMetrics) ServiceUp() {
+	hm.ServiceStatusGauge.Inc()
+}
+
 // Run starts the monitor
 func (m *HTTPMonitor) Run(ctx context.Context) error {
 	if !m.enabled {
 		return nil
 	}
-	if m.name == "" {
+
+	if m.name.String() == "" {
 		return errors.New("Name is required")
 	}
 	var returnerr error
@@ -71,6 +102,12 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 			returnerr = errors.New("Logger is not set")
 			return
 		}
+
+		if m.metricsEnabled {
+			m.metrics = &HTTPMetrics{}
+			m.metrics.StartSericeStatusGauge(m.name.String())
+		}
+
 		if m.state == nil {
 			m.state = &State{
 				Current:         StateStatusOK,
@@ -104,10 +141,10 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
-				m.logger.Infof("Stopping monitor context cancelled%s", m.name)
+				m.logger.Debugf("Stopping monitor context cancelled%s", m.name)
 				return
 			case <-m.stopChannel:
-				m.logger.Infof("Stopping monitor %s", m.name)
+				m.logger.Debugf("Stopping monitor %s", m.name)
 				return
 			case <-time.After(m.interval):
 				if err := m.sem.Acquire(ctx, 1); err != nil {
@@ -118,6 +155,7 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 				err := m.run()
 				if err != nil {
 					if m.state.Get().Current == StateStatusOK {
+						m.metrics.ServiceDown()
 						m.state.Update(StateStatusError)
 					}
 					m.logger.Debugf("Error running monitor [%s]: %s", m.name, err.Error())
@@ -134,6 +172,7 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 					}
 				} else {
 					if m.state.Current == StateStatusError {
+						m.metrics.ServiceUp()
 						m.state.Update(StateStatusOK)
 						m.notifyHandler(m.state, nil)
 						m.resetNotifyLimiter()
@@ -154,6 +193,7 @@ func (m *HTTPMonitor) SetNotifyHandler(notifyHandler func(state *State, err erro
 func (m *HTTPMonitor) HandleFailure(err error) error {
 	m.logger.Debugf("Monitor failed with error %s", err.Error())
 	if m.state.Get().Current == StateStatusOK {
+		m.metrics.ServiceDown()
 		m.state.Update(StateStatusError)
 	}
 	if m.notifyHandler != nil {
@@ -225,12 +265,12 @@ func (m *HTTPMonitor) run() error {
 }
 
 // Name returns the name of the monitor
-func (m *HTTPMonitor) Name() string {
+func (m *HTTPMonitor) Name() MonitorName {
 	return m.name
 }
 
 // SetName sets the name of the monitor
-func (m *HTTPMonitor) SetName(name string) {
+func (m *HTTPMonitor) SetName(name MonitorName) {
 	m.name = name
 }
 
@@ -327,6 +367,7 @@ func (m *HTTPMonitor) resetNotifyLimiter() {
 
 // Stop stops the monitor
 func (m *HTTPMonitor) Stop() {
+	m.logger.Info("Stopping: ", m.name.String())
 	m.stopChannel <- true
 }
 
@@ -335,8 +376,13 @@ func (m *HTTPMonitor) GetState() *State {
 	return m.state.Get()
 }
 
+// SetEnableMetrics sets the enable metrics flag for the monitor
+func (m *HTTPMonitor) SetEnableMetrics(enableMetrics bool) {
+	m.metricsEnabled = enableMetrics
+}
+
 // NewHTTPMonitor creates a new HTTP monitor
-func NewHTTPMonitor(name string, runInterval time.Duration, timeOut time.Duration, maxConcurrentRequests int, maxRetries int, notifyRateLimit time.Duration, notifyHandler func(state *State, err error), config *HTTP, logger Logger) (Monitor, error) {
+func NewHTTPMonitor(name MonitorName, runInterval time.Duration, timeOut time.Duration, maxConcurrentRequests int, maxRetries int, notifyRateLimit time.Duration, notifyHandler func(state *State, err error), config *HTTP, metricsEnabled bool, logger Logger) (Monitor, error) {
 	httpMonitor := &HTTPMonitor{}
 	httpMonitor.SetName(name)
 	if config.Method == "" {
@@ -357,5 +403,6 @@ func NewHTTPMonitor(name string, runInterval time.Duration, timeOut time.Duratio
 	httpMonitor.SetMaxRetries(maxRetries)
 	httpMonitor.SetNotifyRateLimit(notifyRateLimit)
 	httpMonitor.SetNotifyHandler(notifyHandler)
+	httpMonitor.SetEnableMetrics(metricsEnabled)
 	return httpMonitor, nil
 }
