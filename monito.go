@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-	"github.com/tejzpr/monito/appconfig"
 	"github.com/tejzpr/monito/log"
 	"github.com/tejzpr/monito/monitors"
+	"github.com/tejzpr/monito/notifiers"
+	"github.com/tejzpr/monito/utils"
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 	viper.AutomaticEnv()
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
-	viper.AddConfigPath("./appconfig")
+	viper.AddConfigPath("./config")
 	viper.SetEnvPrefix("MONITO")
 	err := viper.ReadInConfig()
 	log.Logger()
@@ -33,6 +34,17 @@ func main() {
 
 	log.Info("Starting monito")
 
+	// Initialize the notifiers
+	notifierConfig := viper.GetStringMap("notifiers")
+	for notifierName, notifierConfigs := range notifierConfig {
+		log.Info(notifierName)
+		err := notifiers.RegisterNotifier(notifierName, notifierConfigs)
+		if err != nil {
+			log.Errorf(err, "Failed to register notifier : %s", notifierName)
+			return
+		}
+	}
+	// Initialize the monitors
 	var monitorWG sync.WaitGroup
 
 	configuredMonitors := make(map[string]monitors.Monitor, 0)
@@ -51,7 +63,7 @@ func main() {
 				log.Errorf(err, "Error marshalling config for monitor %s", monitorName)
 				return
 			}
-			var mConfig appconfig.HTTPConfig
+			var mConfig utils.HTTPConfig
 			if err := json.Unmarshal(jsonBody, &mConfig); err != nil {
 				log.Errorf(err, "Error unmarshalling config for monitor %s", monitorName)
 				return

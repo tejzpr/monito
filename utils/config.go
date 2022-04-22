@@ -1,4 +1,4 @@
-package appconfig
+package utils
 
 import (
 	"encoding/json"

@@ -1,5 +1,18 @@
 {
     "logLevel": "info",
+    "notifiers": {
+        "webex": {
+            "enabled": false,
+            "accessToken": ""
+        },
+        "smtp": {
+            "enabled": false,
+            "host": "outbound.test.com",
+            "port": 25,
+            "tls": false,
+            "sender": "monito-noreply@test.com"
+        }
+    },
     "monitors": {
         "http": [
             {
