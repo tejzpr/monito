@@ -60,7 +60,7 @@ func main() {
 		mConfigArray := (monitorConfigs).([]interface{})
 		for _, monitorConfig := range mConfigArray {
 			if configuredMonitors[monitorName] != nil {
-				log.Fatal("Monitor", monitorName, "already configured")
+				log.Fatal("Monitor already configured: ", monitorName)
 				return
 			}
 			jsonBody, err := json.Marshal(monitorConfig)
@@ -92,7 +92,7 @@ func main() {
 							Cc:      mConfig.NotifyDetails.SMTP.Cc,
 							Bcc:     mConfig.NotifyDetails.SMTP.Bcc,
 							Subject: fmt.Sprintf("Failure in monitor : %s", mConfig.Name),
-							Body:    fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s", mConfig.Name, monitorerr.Error(), monitorName, mConfig.URL),
+							Body:    fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s\nNext Alert In: %s", mConfig.Name, monitorerr.Error(), monitorName, mConfig.URL, mConfig.NotifyRateLimit.Duration.String()),
 						}
 						err = nt.Notify(mailObj)
 						if err != nil {
@@ -107,7 +107,7 @@ func main() {
 							log.Errorf(err, "Failed to get webex notifier for monitor: %s", mConfig.Name)
 							return
 						}
-						err = nt.Notify(fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s", mConfig.Name, monitorerr.Error(), monitorName, mConfig.URL), mConfig.NotifyDetails.Webex.RoomID)
+						err = nt.Notify(fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s\nNext Alert In: %s", mConfig.Name, monitorerr.Error(), monitorName, mConfig.URL, mConfig.NotifyRateLimit.Duration.String()), mConfig.NotifyDetails.Webex.RoomID)
 						if err != nil {
 							log.Errorf(err, "Failed to Webex notify monitor: %s", mConfig.Name)
 							return
