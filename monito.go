@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strings"
@@ -19,8 +20,6 @@ import (
 	"github.com/tejzpr/monito/notifiers"
 	"github.com/tejzpr/monito/utils"
 )
-
-const defaultPrometheusPort = 2112
 
 func main() {
 	replacer := strings.NewReplacer(".", "_")
@@ -39,15 +38,20 @@ func main() {
 
 	log.Info("Starting monito")
 
-	if viper.GetBool("prometheus.enabled") {
-		prometheusPort := viper.GetInt("prometheus.port")
-		if prometheusPort == 0 {
-			prometheusPort = defaultPrometheusPort
-		}
-		prometheusPortStr := fmt.Sprintf("127.0.0.1:%d", prometheusPort)
+	metricsPort := 2112
+	isMetricsEnabled := false
+	metricsServerString := fmt.Sprintf("127.0.0.1:%d", metricsPort)
+	if viper.GetInt("metrics.port") > 0 {
+		metricsPort = viper.GetInt("metrics.port")
+	}
+	if viper.GetBool("metrics.enablePrometheus") {
+		isMetricsEnabled = true
+		http.Handle("/metrics", promhttp.Handler())
+		log.Info("Metrics enabled on port: ", metricsPort)
+	}
+	if isMetricsEnabled {
 		go func() {
-			http.Handle("/metrics", promhttp.Handler())
-			http.ListenAndServe(prometheusPortStr, nil)
+			http.ListenAndServe(metricsServerString, nil)
 		}()
 	}
 

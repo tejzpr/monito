@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -105,7 +108,7 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 				m.logger.Debugf("Running monitor: %s", m.name)
 				err := m.run()
 				if err != nil {
-					m.logger.Errorf(err, "Error running monitor: ", m.name)
+					m.logger.Errorf(err, "Error running monitor: %s", m.name)
 					if m.maxRetries > 0 && m.retryCounter < m.maxRetries {
 						m.retryCounter++
 						m.logger.Infof("Retrying monitor: %s", m.name)
@@ -148,7 +151,6 @@ func (m *HTTPMonitor) run() error {
 
 	m.logger.Debugf("Running HTTP Request for monitor: %s", m.name)
 	req, err := http.NewRequest(m.config.Method, m.config.URL, bytes.NewBuffer([]byte(m.config.Body)))
-
 	if err != nil {
 		return err
 	}
@@ -159,7 +161,27 @@ func (m *HTTPMonitor) run() error {
 	}
 	resp, err := m.httpClient.Do(req)
 	if err != nil {
-		return err
+		switch t := err.(type) {
+		case *net.OpError:
+			if t.Op == "dial" {
+				return m.HandleFailure(errors.New("Unknown host"))
+			} else if t.Op == "read" {
+				return m.HandleFailure(errors.New("Connection refused [read]"))
+			}
+			return err
+		case *url.Error:
+			if t.Op == "Get" || t.Op == "Post" || t.Op == "Option" {
+				return m.HandleFailure(errors.New("Connection refused [url error]"))
+			}
+			return err
+		case syscall.Errno:
+			if t == syscall.ECONNREFUSED {
+				return m.HandleFailure(errors.New("Connection refused [ECONNREFUSED]"))
+			}
+			return err
+		default:
+			return err
+		}
 	} else if resp.StatusCode != m.config.ExpectedStatusCode {
 		return m.HandleFailure(errors.New("Status code does not match"))
 	}
