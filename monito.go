@@ -100,7 +100,7 @@ func main() {
 				mConfig.MaxConcurrentRequests,
 				mConfig.MaxRetries,
 				mConfig.NotifyRateLimit.Duration,
-				func(monitorerr error) {
+				func(state *monitors.State, monitorerr error) {
 					now := time.Now()
 					loc, _ := time.LoadLocation("UTC")
 					if len(mConfig.NotifyDetails.SMTP.To) > 0 {
@@ -109,18 +109,34 @@ func main() {
 							log.Errorf(err, "Failed to get smtp notifier for monitor: %s", mConfig.Name)
 							return
 						}
-						mailObj := notifiers.Mail{
-							To:      mConfig.NotifyDetails.SMTP.To,
-							Cc:      mConfig.NotifyDetails.SMTP.Cc,
-							Bcc:     mConfig.NotifyDetails.SMTP.Bcc,
-							Subject: fmt.Sprintf("Failure in monitor : %s", mConfig.Name),
-							Body: fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s\nAlerted On: %s\nNext Possible Alert In: %s",
-								mConfig.Name,
-								monitorerr.Error(),
-								monitorName,
-								mConfig.URL,
-								now.In(loc).Format(time.RFC1123),
-								mConfig.NotifyRateLimit.Duration.String()),
+						var mailObj notifiers.Mail
+						if monitorerr != nil {
+							mailObj = notifiers.Mail{
+								To:      mConfig.NotifyDetails.SMTP.To,
+								Cc:      mConfig.NotifyDetails.SMTP.Cc,
+								Bcc:     mConfig.NotifyDetails.SMTP.Bcc,
+								Subject: fmt.Sprintf("Failure in monitor : %s", mConfig.Name),
+								Body: fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s\nAlerted On: %s\nNext Possible Alert In: %s",
+									mConfig.Name,
+									monitorerr.Error(),
+									monitorName,
+									mConfig.URL,
+									now.In(loc).Format(time.RFC1123),
+									mConfig.NotifyRateLimit.Duration.String()),
+							}
+						} else if state.Current == monitors.StateStatusOK && state.Previous == monitors.StateStatusError {
+							mailObj = notifiers.Mail{
+								To:      mConfig.NotifyDetails.SMTP.To,
+								Cc:      mConfig.NotifyDetails.SMTP.Cc,
+								Bcc:     mConfig.NotifyDetails.SMTP.Bcc,
+								Subject: fmt.Sprintf("Recovered : %s", mConfig.Name),
+								Body: fmt.Sprintf("Recovered in monitor [%s]: %s \nType: %s\nRecovered URL: %s\nRecovered On: %s",
+									mConfig.Name,
+									state.Current,
+									monitorName,
+									mConfig.URL,
+									state.StateChangeTime.In(loc).Format(time.RFC1123)),
+							}
 						}
 						err = nt.Notify(mailObj)
 						if err != nil {
@@ -135,14 +151,24 @@ func main() {
 							log.Errorf(err, "Failed to get webex notifier for monitor: %s", mConfig.Name)
 							return
 						}
-						err = nt.Notify(fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s\nAlerted On: %s\nNext Possible Alert In: %s",
-							mConfig.Name,
-							monitorerr.Error(),
-							monitorName,
-							mConfig.URL,
-							now.In(loc).Format(time.RFC1123),
-							mConfig.NotifyRateLimit.Duration.String()),
-							mConfig.NotifyDetails.Webex.RoomID)
+						if monitorerr != nil {
+							err = nt.Notify(fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s\nAlerted On: %s\nNext Possible Alert In: %s",
+								mConfig.Name,
+								monitorerr.Error(),
+								monitorName,
+								mConfig.URL,
+								now.In(loc).Format(time.RFC1123),
+								mConfig.NotifyRateLimit.Duration.String()),
+								mConfig.NotifyDetails.Webex.RoomID)
+						} else if state.Current == monitors.StateStatusOK && state.Previous == monitors.StateStatusError {
+							err = nt.Notify(fmt.Sprintf("Recovered in monitor [%s]: %s \nType: %s\nRecovered URL: %s\nRecovered On: %s",
+								mConfig.Name,
+								state.Current,
+								monitorName,
+								mConfig.URL,
+								state.StateChangeTime.In(loc).Format(time.RFC1123)),
+								mConfig.NotifyDetails.Webex.RoomID)
+						}
 						if err != nil {
 							log.Errorf(err, "Failed to Webex notify monitor: %s", mConfig.Name)
 							return

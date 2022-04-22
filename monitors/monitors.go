@@ -2,6 +2,7 @@ package monitors
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/tejzpr/monito/log"
@@ -43,9 +44,49 @@ type Monitor interface {
 	SetMaxRetries(maxRetries int)
 	// SetNotifyHandler handles the notification failure of the monitor
 	// Calls to this function should be non-blocking
-	SetNotifyHandler(notifyHandler func(err error))
+	SetNotifyHandler(notifyHandler func(state *State, err error))
 	// SetNotifyRateLimit sets the notify rate limit for the monitor
 	SetNotifyRateLimit(notifyRateLimit time.Duration)
+	// GetState returns the state of the monitor
+	GetState() *State
+}
+
+// StateStatus is the state of the monitor
+type StateStatus string
+
+const (
+	// StateStatusOK indicates that the monitor is in a healthy state
+	StateStatusOK StateStatus = "OK"
+	// StateStatusError indicates that the monitor is in a error state
+	StateStatusError StateStatus = "ERROR"
+	// StateStatusInit indicates that the monitor is in a initializing state
+	StateStatusInit StateStatus = "INIT"
+)
+
+// State is the state of the monitor
+type State struct {
+	Previous        StateStatus
+	Current         StateStatus
+	StateChangeTime time.Time
+}
+
+// Get returns the current state of the monitor
+func (s *State) Get() *State {
+	return s
+}
+
+// Update updates the state of the monitor
+func (s *State) Update(newState StateStatus) error {
+	// Validate newState
+	if newState != StateStatusOK &&
+		newState != StateStatusError &&
+		newState != StateStatusInit {
+		return fmt.Errorf("Invalid state: %s", newState)
+	}
+	s.Previous = s.Current
+	s.Current = newState
+	s.StateChangeTime = time.Now()
+	return nil
 }
 
 // Logger is the interface of the logger for the monitor

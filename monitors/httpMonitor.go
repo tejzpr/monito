@@ -49,7 +49,8 @@ type HTTPMonitor struct {
 	httpClient            *http.Client
 	setupOnce             sync.Once
 	notifyLimiter         *rate.Limiter
-	notifyHandler         func(err error)
+	state                 *State
+	notifyHandler         func(state *State, err error)
 	maxConcurrentRequests int
 	maxRetries            int
 	retryCounter          int
@@ -68,6 +69,13 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 		if m.logger == nil {
 			returnerr = errors.New("Logger is not set")
 			return
+		}
+		if m.state == nil {
+			m.state = &State{
+				Current:         StateStatusOK,
+				Previous:        StateStatusInit,
+				StateChangeTime: time.Now(),
+			}
 		}
 		m.stopChannel = make(chan bool)
 		if m.sem == nil {
@@ -108,7 +116,10 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 				m.logger.Debugf("Running monitor: %s", m.name)
 				err := m.run()
 				if err != nil {
-					m.logger.Errorf(err, "Error running monitor: %s", m.name)
+					if m.state.Get().Current == StateStatusOK {
+						m.state.Update(StateStatusError)
+					}
+					m.logger.Debugf("Error running monitor [%s]: %s", m.name, err.Error())
 					if m.maxRetries > 0 && m.retryCounter < m.maxRetries {
 						m.retryCounter++
 						m.logger.Infof("Retrying monitor: %s", m.name)
@@ -120,6 +131,11 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 					} else {
 						continue
 					}
+				} else {
+					if m.state.Current == StateStatusError {
+						m.state.Update(StateStatusOK)
+						m.notifyHandler(m.state, nil)
+					}
 				}
 			}
 		}
@@ -128,21 +144,24 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 }
 
 // SetNotifyHandler sets the notify handler for the monitor
-func (m *HTTPMonitor) SetNotifyHandler(notifyHandler func(err error)) {
+func (m *HTTPMonitor) SetNotifyHandler(notifyHandler func(state *State, err error)) {
 	m.notifyHandler = notifyHandler
 }
 
 // HandleFailure handles a failure
 func (m *HTTPMonitor) HandleFailure(err error) error {
 	m.logger.Debugf("Monitor failed with error %s", err.Error())
+	if m.state.Get().Current == StateStatusOK {
+		m.state.Update(StateStatusError)
+	}
 	if m.notifyHandler != nil {
 		if m.notifyLimiter == nil {
-			m.notifyHandler(err)
+			m.notifyHandler(m.state, err)
 		} else if m.notifyLimiter.Allow() {
-			m.notifyHandler(err)
+			m.notifyHandler(m.state, err)
 		}
 	}
-	return nil
+	return err
 }
 
 // run runs the monitor
@@ -305,8 +324,13 @@ func (m *HTTPMonitor) Stop() {
 	m.stopChannel <- true
 }
 
+// GetState returns the state of the monitor
+func (m *HTTPMonitor) GetState() *State {
+	return m.state.Get()
+}
+
 // NewHTTPMonitor creates a new HTTP monitor
-func NewHTTPMonitor(name string, runInterval time.Duration, timeOut time.Duration, maxConcurrentRequests int, maxRetries int, notifyRateLimit time.Duration, notifyHandler func(err error), config *HTTP, logger Logger) (Monitor, error) {
+func NewHTTPMonitor(name string, runInterval time.Duration, timeOut time.Duration, maxConcurrentRequests int, maxRetries int, notifyRateLimit time.Duration, notifyHandler func(state *State, err error), config *HTTP, logger Logger) (Monitor, error) {
 	httpMonitor := &HTTPMonitor{}
 	httpMonitor.SetName(name)
 	if config.Method == "" {
