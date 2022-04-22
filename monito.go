@@ -100,6 +100,20 @@ func main() {
 							return
 						}
 					}
+
+					if len(mConfig.NotifyDetails.Webex.RoomID) > 0 {
+						nt, err := notifiers.GetNotifier("webex")
+						if err != nil {
+							log.Errorf(err, "Failed to get webex notifier for monitor: %s", mConfig.Name)
+							return
+						}
+						err = nt.Notify(fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s", mConfig.Name, monitorerr.Error(), monitorName, mConfig.URL), mConfig.NotifyDetails.Webex.RoomID)
+						if err != nil {
+							log.Errorf(err, "Failed to Webex notify monitor: %s", mConfig.Name)
+							return
+						}
+					}
+
 					log.Debugf("Failure in monitor : %s", mConfig.Name)
 				},
 				&monitors.HTTP{
