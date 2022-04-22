@@ -53,7 +53,7 @@ func (s *SMTPNotifier) Notify(params ...interface{}) error {
 	if err != nil {
 		return err
 	}
-	mail := params[0].(*Mail)
+	mail := params[0].(Mail)
 	messageBody := mail.BuildMessage(s.sender)
 	if err := s.client.Mail(s.sender); err != nil {
 		return err
@@ -144,7 +144,7 @@ func (s *SMTPNotifier) Configure(params ...interface{}) error {
 
 	if !smtpConfig.Enabled {
 		s.enabled = false
-		return nil
+		return fmt.Errorf("disabled")
 	}
 	s.enabled = true
 	s.host = smtpConfig.Host

@@ -78,7 +78,7 @@ func (w *WebexNotifier) Configure(params ...interface{}) error {
 
 	if !webexConfig.Enabled {
 		w.enabled = false
-		return nil
+		return fmt.Errorf("disabled")
 	}
 	w.enabled = true
 	accessToken := webexConfig.AccessToken

@@ -39,7 +39,7 @@ func RegisterNotifier(name string, params ...interface{}) error {
 		}
 		notifiers[name] = s
 	default:
-		return fmt.Errorf("unknown notifier %s", name)
+		return fmt.Errorf("unknown notifier: %s", name)
 	}
 	return nil
 }
@@ -49,5 +49,14 @@ func GetNotifier(name string) (Notifier, error) {
 	if notifier, ok := notifiers[name]; ok {
 		return notifier, nil
 	}
-	return nil, fmt.Errorf("notifier %s is not registered", name)
+	return nil, fmt.Errorf("notifier is not registered: %s", name)
+}
+
+// StopAll stops all notifiers
+func StopAll() {
+	notifierMu.Lock()
+	defer notifierMu.Unlock()
+	for _, notifier := range notifiers {
+		notifier.Close()
+	}
 }

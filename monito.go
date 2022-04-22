@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/signal"
 	"strings"
@@ -36,14 +37,18 @@ func main() {
 
 	// Initialize the notifiers
 	notifierConfig := viper.GetStringMap("notifiers")
+	log.Info("Initializing notifiers")
 	for notifierName, notifierConfigs := range notifierConfig {
-		log.Info(notifierName)
 		err := notifiers.RegisterNotifier(notifierName, notifierConfigs)
 		if err != nil {
-			log.Errorf(err, "Failed to register notifier : %s", notifierName)
-			return
+			if err.Error() != "disabled" {
+				log.Errorf(err, "Failed to register notifier: %s", notifierName)
+				return
+			}
 		}
+		log.Infof("Registered notifier: %s", notifierName)
 	}
+	log.Info("Notifiers initialized")
 	// Initialize the monitors
 	var monitorWG sync.WaitGroup
 
@@ -60,12 +65,12 @@ func main() {
 			}
 			jsonBody, err := json.Marshal(monitorConfig)
 			if err != nil {
-				log.Errorf(err, "Error marshalling config for monitor %s", monitorName)
+				log.Errorf(err, "Error marshalling config for monitor: %s", monitorName)
 				return
 			}
 			var mConfig utils.HTTPConfig
 			if err := json.Unmarshal(jsonBody, &mConfig); err != nil {
-				log.Errorf(err, "Error unmarshalling config for monitor %s", monitorName)
+				log.Errorf(err, "Error unmarshalling config for monitor: %s", monitorName)
 				return
 			}
 			monitor, err := monitors.NewHTTPMonitor(
@@ -75,8 +80,27 @@ func main() {
 				mConfig.MaxConcurrentRequests,
 				mConfig.MaxRetries,
 				mConfig.NotifyRateLimit.Duration,
-				func(err error) {
-					log.Errorf(err, "Monitor %s failed", monitorName)
+				func(monitorerr error) {
+					if len(mConfig.NotifyDetails.SMTP.To) > 0 {
+						nt, err := notifiers.GetNotifier("smtp")
+						if err != nil {
+							log.Errorf(err, "Failed to get smtp notifier for monitor: %s", mConfig.Name)
+							return
+						}
+						mailObj := notifiers.Mail{
+							To:      mConfig.NotifyDetails.SMTP.To,
+							Cc:      mConfig.NotifyDetails.SMTP.Cc,
+							Bcc:     mConfig.NotifyDetails.SMTP.Bcc,
+							Subject: fmt.Sprintf("Failure in monitor : %s", mConfig.Name),
+							Body:    fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s", mConfig.Name, monitorerr.Error(), monitorName, mConfig.URL),
+						}
+						err = nt.Notify(mailObj)
+						if err != nil {
+							log.Errorf(err, "Failed to SMTP notify monitor: %s", mConfig.Name)
+							return
+						}
+					}
+					log.Debugf("Failure in monitor : %s", mConfig.Name)
 				},
 				&monitors.HTTP{
 					URL:                mConfig.URL,
@@ -103,30 +127,30 @@ func main() {
 	stopper := make(chan os.Signal)
 	signal.Notify(stopper, syscall.SIGTERM)
 	signal.Notify(stopper, syscall.SIGINT)
-
+	closeMonitorsChan := make(chan struct{})
 	go func() {
 		<-stopper
 		log.Info("Stopping monito...")
-		closeMonitorsChan := make(chan struct{})
 
 		go func() {
 			for _, monitor := range configuredMonitors {
 				monitor.Stop()
 			}
+			notifiers.StopAll()
+			closeMonitorsChan <- struct{}{}
 		}()
 
 		timer := time.NewTimer(10 * time.Second)
 		select {
 		case <-timer.C:
 			log.Info("Timed out waiting for monitors to stop")
-			log.Info("Exiting.")
-			os.Exit(1)
-		case <-closeMonitorsChan:
-			log.Info("Monitors stopped")
+			closeMonitorsChan <- struct{}{}
 		}
 
 	}()
 
 	monitorWG.Wait()
+	<-closeMonitorsChan
+	log.Info("Monitors stopped")
 	log.Info("Exiting.")
 }

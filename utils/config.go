@@ -41,6 +41,24 @@ type HTTPConfigHeader struct {
 	Value string `json:"value"`
 }
 
+// WebexSendConfig is the config for the Webex notifier
+type WebexSendConfig struct {
+	RoomID string `json:"roomId"`
+}
+
+// SMTPSendConfig is the config for the Webex notifier
+type SMTPSendConfig struct {
+	To  []string `json:"to"`
+	Cc  []string `json:"cc"`
+	Bcc []string `json:"bcc"`
+}
+
+// NotifyConfig is the config for the Notify notifier
+type NotifyConfig struct {
+	Webex WebexSendConfig `json:"webex"`
+	SMTP  SMTPSendConfig  `json:"smtp"`
+}
+
 // HTTPConfig is the config for the HTTP monitor
 type HTTPConfig struct {
 	Name                  string           `json:"name"`
@@ -55,4 +73,5 @@ type HTTPConfig struct {
 	MaxConcurrentRequests int              `json:"maxConcurrentRequests"`
 	MaxRetries            int              `json:"maxRetries"`
 	NotifyRateLimit       Duration         `json:"notifyRateLimit"`
+	NotifyDetails         NotifyConfig     `json:"notifyDetails"`
 }
