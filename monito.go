@@ -40,10 +40,10 @@ func main() {
 
 	metricsPort := 2112
 	isMetricsEnabled := false
-	metricsServerString := fmt.Sprintf("127.0.0.1:%d", metricsPort)
 	if viper.GetInt("metrics.port") > 0 {
 		metricsPort = viper.GetInt("metrics.port")
 	}
+	metricsServerString := fmt.Sprintf("127.0.0.1:%d", metricsPort)
 	if viper.GetBool("metrics.enablePrometheus") {
 		isMetricsEnabled = true
 		http.Handle("/metrics", promhttp.Handler())
