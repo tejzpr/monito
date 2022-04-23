@@ -171,7 +171,7 @@ func main() {
 					ExpectedBody:       mConfig.ExpectedResponseBody,
 					ExpectedStatusCode: mConfig.ExpectedStatusCode,
 				},
-				viper.GetBool("metrics.enable"),
+				viper.GetBool("metrics.prometheus.enable"),
 				log.Logger(),
 			)
 			if err != nil {
