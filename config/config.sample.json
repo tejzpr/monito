@@ -1,10 +1,12 @@
 {
     "logLevel": "info",
     "metrics": {
-        "enablePrometheus":true,
-        "port": 8430
+        "prometheus":{
+            "enable":true,
+            "enableGoCollector":false,
+            "port": 8430
+        }
     },
-   
     "notifiers": {
         "webex": {
             "enabled": true,

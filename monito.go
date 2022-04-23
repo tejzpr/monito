@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
 	"github.com/tejzpr/monito/log"
@@ -169,7 +171,7 @@ func main() {
 					ExpectedBody:       mConfig.ExpectedResponseBody,
 					ExpectedStatusCode: mConfig.ExpectedStatusCode,
 				},
-				viper.GetBool("metrics.enablePrometheus"),
+				viper.GetBool("metrics.enable"),
 				log.Logger(),
 			)
 			if err != nil {
@@ -214,12 +216,15 @@ func main() {
 	// Setup Metrics
 	metricsPort := 8430
 	isMetricsEnabled := false
-	if viper.GetInt("metrics.port") > 0 {
-		metricsPort = viper.GetInt("metrics.port")
+	if viper.GetInt("metrics.prometheus.port") > 0 {
+		metricsPort = viper.GetInt("metrics.prometheus.port")
 	}
 	metricsServerString := fmt.Sprintf("127.0.0.1:%d", metricsPort)
-	if viper.GetBool("metrics.enablePrometheus") {
+	if viper.GetBool("metrics.prometheus.enable") {
 		isMetricsEnabled = true
+		if !viper.GetBool("metrics.prometheus.enableGoCollector") {
+			prometheus.Unregister(collectors.NewGoCollector())
+		}
 		http.Handle("/metrics", promhttp.Handler())
 		log.Info("Metrics enabled on port: ", metricsPort)
 	}
