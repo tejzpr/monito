@@ -19,7 +19,7 @@ func (m NotifierName) String() string {
 
 // Notifier is the interface for all notifiers
 type Notifier interface {
-	Notify(params ...interface{}) error
+	Notify(subject string, message string, params ...interface{}) error
 	GetName() NotifierName
 	Close() error
 }
@@ -74,4 +74,15 @@ func StopAll() {
 	for _, notifier := range initalizedNotifiers {
 		notifier.Close()
 	}
+}
+
+// GetRegisteredNotifierNames returns the registered monitor names
+func GetRegisteredNotifierNames() []string {
+	notifierMu.RLock()
+	defer notifierMu.RUnlock()
+	var names []string
+	for name := range initalizedNotifiers {
+		names = append(names, name)
+	}
+	return names
 }

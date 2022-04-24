@@ -32,15 +32,26 @@ type Notifier struct {
 // Notify sends the message to webex
 // params[0] is the message
 // params[1] is the room id
-func (w *Notifier) Notify(params ...interface{}) error {
+func (w *Notifier) Notify(subject string, message string, params ...interface{}) error {
 	if w.client == nil {
 		return fmt.Errorf("webex client is not configured")
 	}
-	message := params[0].(string)
-	roomID := params[1].(string)
+
+	jBytes := params[0].([]byte)
+	var sConfig SendConfig
+	if err := json.Unmarshal(jBytes, &sConfig); err != nil {
+		log.Errorf(err, "Error unmarshalling notifier")
+		return err
+	}
+
+	if len(sConfig.RoomID) <= 0 {
+		return fmt.Errorf("room id is not configured")
+	} else if len(message) <= 0 {
+		return fmt.Errorf("message is not configured")
+	}
 
 	_, _, err := w.client.Messages.CreateMessage(&webexteams.MessageCreateRequest{
-		RoomID:   roomID,
+		RoomID:   sConfig.RoomID,
 		Markdown: message,
 	})
 	if err != nil {

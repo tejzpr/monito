@@ -33,14 +33,13 @@ type NotificationHandler func(monitor Monitor, err error)
 
 // JSONBaseConfig is the base JSON config for all monitors
 type JSONBaseConfig struct {
-	Name                  MonitorName        `json:"name"`
-	Enabled               bool               `json:"enabled"`
-	Interval              utils.Duration     `json:"interval"`
-	Timeout               utils.Duration     `json:"timeout"`
-	MaxConcurrentRequests int                `json:"maxConcurrentRequests"`
-	MaxRetries            int                `json:"maxRetries"`
-	NotifyRateLimit       utils.Duration     `json:"notifyRateLimit"`
-	NotifyDetails         utils.NotifyConfig `json:"notifyDetails"`
+	Name                  MonitorName    `json:"name"`
+	Enabled               bool           `json:"enabled"`
+	Interval              utils.Duration `json:"interval"`
+	Timeout               utils.Duration `json:"timeout"`
+	MaxConcurrentRequests int            `json:"maxConcurrentRequests"`
+	MaxRetries            int            `json:"maxRetries"`
+	NotifyRateLimit       utils.Duration `json:"notifyRateLimit"`
 }
 
 // Monitor is an interface that all monoitors must implement
@@ -92,10 +91,6 @@ type Monitor interface {
 	GetErrorNotificationBody(monitorerr error) string
 	// GetRecoveryNotificationBody returns the recovery notification body
 	GetRecoveryNotificationBody() string
-	// SetNotifyConfig sets the notify config for the monitor
-	SetNotifyConfig(notifyConfig utils.NotifyConfig)
-	// GetNotifyConfig returns the notify config for the monitor
-	GetNotifyConfig() utils.NotifyConfig
 }
 
 // StateStatus is the state of the monitor

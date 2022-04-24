@@ -4,9 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/tejzpr/monito/notifiers/smtp"
-	"github.com/tejzpr/monito/notifiers/webex"
 )
 
 // Duration is a wrapper for time.Duration
@@ -36,10 +33,4 @@ func (duration *Duration) UnmarshalJSON(b []byte) error {
 	}
 
 	return nil
-}
-
-// NotifyConfig is the config for the Notify notifier
-type NotifyConfig struct {
-	Webex webex.SendConfig `json:"webex"`
-	SMTP  smtp.SendConfig  `json:"smtp"`
 }

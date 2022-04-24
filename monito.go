@@ -26,7 +26,6 @@ import (
 
 	// Initialize the notifiers
 	"github.com/tejzpr/monito/notifiers"
-	"github.com/tejzpr/monito/notifiers/smtp"
 	_ "github.com/tejzpr/monito/notifiers/smtp"
 	_ "github.com/tejzpr/monito/notifiers/webex"
 	// Utils
@@ -87,81 +86,62 @@ func main() {
 				log.Errorf(err, "Error marshalling config for monitor: %s", monitorName)
 				return
 			}
+			func(monitorConfig interface{}, jsonBody []byte) {
+				mNotificationObj := (monitorConfig).(map[string]interface{})
+				notifyDetails := mNotificationObj["notifyDetails"]
+				notifiersObj := notifyDetails.(map[string]interface{})
 
-			monitor, err := monitors.GetMonitor(monitorName, jsonBody, monitors.NotificationHandler(func(m monitors.Monitor, monitorerr error) {
-				if len(m.GetNotifyConfig().SMTP.To) > 0 {
-					nt := notifiers.GetNotifier("smtp")
-					if nt == nil {
-						log.Errorf(err, "Failed to get smtp notifier for monitor: %s", m.Name())
-						return
-					}
-					var mailObj smtp.Mail
-					if monitorerr != nil {
-						mailObj = smtp.Mail{
-							To:      m.GetNotifyConfig().SMTP.To,
-							Cc:      m.GetNotifyConfig().SMTP.Cc,
-							Bcc:     m.GetNotifyConfig().SMTP.Bcc,
-							Subject: fmt.Sprintf("Failure in monitor : %s", m.Name()),
-							Body:    m.GetErrorNotificationBody(monitorerr),
+				monitor, err := monitors.GetMonitor(monitorName, jsonBody, monitors.NotificationHandler(func(m monitors.Monitor, monitorerr error) {
+					for _, notifyKey := range notifiers.GetRegisteredNotifierNames() {
+						ntObj := notifiersObj[notifyKey]
+
+						jBytes, err := json.Marshal(ntObj)
+						if err != nil {
+							log.Errorf(err, "Error marshalling config for notifier: %s", notifyKey)
+							return
 						}
-					} else if m.GetState().Current == monitors.StateStatusOK && m.GetState().Previous == monitors.StateStatusError {
-						mailObj = smtp.Mail{
-							To:      m.GetNotifyConfig().SMTP.To,
-							Cc:      m.GetNotifyConfig().SMTP.Cc,
-							Bcc:     m.GetNotifyConfig().SMTP.Bcc,
-							Subject: fmt.Sprintf("Recovered : %s", m.Name()),
-							Body:    m.GetRecoveryNotificationBody(),
+
+						nt := notifiers.GetNotifier(notifyKey)
+						if nt == nil {
+							log.Errorf(err, "Failed to get smtp notifier for monitor: %s", m.Name())
+							continue
+						}
+						if monitorerr != nil {
+							subject := fmt.Sprintf("Failure in monitor : %s", m.Name())
+							message := m.GetErrorNotificationBody(monitorerr)
+							nt.Notify(subject, message, jBytes)
+						} else {
+							subject := fmt.Sprintf("Recovered : %s", m.Name())
+							message := m.GetRecoveryNotificationBody()
+							nt.Notify(subject, message, jBytes)
 						}
 					}
-					err = nt.Notify(mailObj)
-					if err != nil {
-						log.Errorf(err, "Failed to SMTP notify monitor: %s", m.Name())
-						return
-					}
-				}
+					log.Debugf("Failure in monitor : %s", m.Name())
+				}), log.Logger(), viper.GetBool("metrics.prometheus.enable"))
 
-				if len(m.GetNotifyConfig().Webex.RoomID) > 0 {
-					nt := notifiers.GetNotifier("webex")
-					if nt == nil {
-						log.Errorf(err, "Failed to get webex notifier for monitor: %s", m.Name())
-						return
-					}
-					if monitorerr != nil {
-						err = nt.Notify(m.GetErrorNotificationBody(monitorerr), m.GetNotifyConfig().Webex.RoomID)
-					} else if m.GetState().Current == monitors.StateStatusOK && m.GetState().Previous == monitors.StateStatusError {
-						err = nt.Notify(m.GetRecoveryNotificationBody(), m.GetNotifyConfig().Webex.RoomID)
-					}
-					if err != nil {
-						log.Errorf(err, "Failed to Webex notify monitor: %s", m.Name())
-						return
-					}
-				}
-
-				log.Debugf("Failure in monitor : %s", m.Name())
-			}), log.Logger(), viper.GetBool("metrics.prometheus.enable"))
-
-			if err != nil {
-				log.Fatalf("fatal error creating monitor: %s \n", err)
-			}
-			monitorWG.Add(1)
-			go func() error {
-				defer func() {
-					log.Info("Stopped monitor: ", monitor.Name().String())
-					monitorWG.Done()
-				}()
-				if !monitor.Enabled() {
-					log.Info("Monitor is disabled: ", monitor.Name().String())
-					return nil
-				}
-				log.Info("Running monitor: ", monitor.Name().String())
-				err := monitor.Run(context.Background())
 				if err != nil {
-					log.Errorf(err, "Failed to run monitor: %s", monitor.Name())
-					return err
+					log.Fatalf("fatal error creating monitor: %s \n", err)
 				}
-				return nil
-			}()
-			configuredMonitors[monitor.Name().String()] = monitor
+				monitorWG.Add(1)
+				go func() error {
+					defer func() {
+						log.Info("Stopped monitor: ", monitor.Name().String())
+						monitorWG.Done()
+					}()
+					if !monitor.Enabled() {
+						log.Info("Monitor is disabled: ", monitor.Name().String())
+						return nil
+					}
+					log.Info("Running monitor: ", monitor.Name().String())
+					err := monitor.Run(context.Background())
+					if err != nil {
+						log.Errorf(err, "Failed to run monitor: %s", monitor.Name())
+						return err
+					}
+					return nil
+				}()
+				configuredMonitors[monitor.Name().String()] = monitor
+			}(monitorConfig, jsonBody)
 		}
 	}
 	stopper := make(chan os.Signal)

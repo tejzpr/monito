@@ -17,7 +17,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tejzpr/monito/log"
 	"github.com/tejzpr/monito/monitors"
-	"github.com/tejzpr/monito/utils"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/time/rate"
@@ -105,7 +104,6 @@ type Monitor struct {
 	metricsEnabled        bool
 	metrics               *Metrics
 	notifyLimiter         *rate.Limiter
-	notifyConfig          utils.NotifyConfig
 	state                 *monitors.State
 	notifyHandler         monitors.NotificationHandler
 	maxConcurrentRequests int
@@ -361,16 +359,6 @@ func (m *Monitor) resetNotifyLimiter() {
 	m.notifyLimiter = rate.NewLimiter(m.notifyRate, 1)
 }
 
-// SetNotifyConfig sets the notify config for the monitor
-func (m *Monitor) SetNotifyConfig(notifyConfig utils.NotifyConfig) {
-	m.notifyConfig = notifyConfig
-}
-
-// GetNotifyConfig gets the notify config for the monitor
-func (m *Monitor) GetNotifyConfig() utils.NotifyConfig {
-	return m.notifyConfig
-}
-
 // Stop stops the monitor
 func (m *Monitor) Stop() {
 	m.logger.Info("Stopping: ", m.name.String())
@@ -483,7 +471,6 @@ func newPortMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 	portMonitor.SetNotifyRateLimit(mConfig.NotifyRateLimit.Duration)
 	portMonitor.SetNotifyHandler(notifyHandler)
 	portMonitor.SetEnableMetrics(metricsEnabled)
-	portMonitor.SetNotifyConfig(mConfig.NotifyDetails)
 	return portMonitor, nil
 }
 

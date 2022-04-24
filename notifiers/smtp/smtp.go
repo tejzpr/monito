@@ -23,17 +23,8 @@ type SendConfig struct {
 	Bcc []string `json:"bcc"`
 }
 
-// Mail is the email message
-type Mail struct {
-	To      []string
-	Cc      []string
-	Bcc     []string
-	Subject string
-	Body    string
-}
-
 // BuildMessage builds the message
-func (mail *Mail) BuildMessage(sender string) string {
+func (mail *SendConfig) BuildMessage(sender string, subject string, body string) string {
 	header := ""
 	header += fmt.Sprintf("From: %s\r\n", sender)
 	if len(mail.To) > 0 {
@@ -43,8 +34,8 @@ func (mail *Mail) BuildMessage(sender string) string {
 		header += fmt.Sprintf("Cc: %s\r\n", strings.Join(mail.Cc, ";"))
 	}
 
-	header += fmt.Sprintf("Subject: %s\r\n", mail.Subject)
-	header += "\r\n" + mail.Body
+	header += fmt.Sprintf("Subject: %s\r\n", subject)
+	header += "\r\n" + body
 
 	return header
 }
@@ -62,18 +53,33 @@ type Notifier struct {
 
 // Notify sends the message by email
 // params[0] is the Mail object
-func (s *Notifier) Notify(params ...interface{}) error {
+func (s *Notifier) Notify(subject string, message string, params ...interface{}) error {
 	err := s.validate()
 	if err != nil {
 		return err
 	}
-	mail := params[0].(Mail)
-	messageBody := mail.BuildMessage(s.sender)
+
+	jBytes := params[0].([]byte)
+	var sConfig SendConfig
+	if err := json.Unmarshal(jBytes, &sConfig); err != nil {
+		log.Errorf(err, "Error unmarshalling notifier")
+		return err
+	}
+
+	if len(sConfig.To) <= 0 {
+		return fmt.Errorf("no recipients")
+	} else if len(message) <= 0 {
+		return fmt.Errorf("no body")
+	} else if len(subject) <= 0 {
+		return fmt.Errorf("no subject")
+	}
+
+	messageBody := sConfig.BuildMessage(s.sender, subject, message)
 	if err := s.client.Mail(s.sender); err != nil {
 		return err
 	}
-	receivers := append(mail.To, mail.Cc...)
-	receivers = append(receivers, mail.Bcc...)
+	receivers := append(sConfig.To, sConfig.Cc...)
+	receivers = append(receivers, sConfig.Bcc...)
 	for _, k := range receivers {
 		if err := s.client.Rcpt(k); err != nil {
 			return err

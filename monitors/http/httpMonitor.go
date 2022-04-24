@@ -18,7 +18,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tejzpr/monito/log"
 	"github.com/tejzpr/monito/monitors"
-	"github.com/tejzpr/monito/utils"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/time/rate"
@@ -60,7 +59,6 @@ type Monitor struct {
 	metricsEnabled        bool
 	metrics               *Metrics
 	notifyLimiter         *rate.Limiter
-	notifyConfig          utils.NotifyConfig
 	state                 *monitors.State
 	notifyHandler         monitors.NotificationHandler
 	maxConcurrentRequests int
@@ -82,16 +80,6 @@ func (hm *Metrics) StartSericeStatusGauge(name string) {
 		Help:      "Provides status of the service, 0 = down, 1 = up",
 	})
 	hm.ServiceStatusGauge.Set(1)
-}
-
-// SetNotifyConfig sets the notify config for the monitor
-func (m *Monitor) SetNotifyConfig(notifyConfig utils.NotifyConfig) {
-	m.notifyConfig = notifyConfig
-}
-
-// GetNotifyConfig gets the notify config for the monitor
-func (m *Monitor) GetNotifyConfig() utils.NotifyConfig {
-	return m.notifyConfig
 }
 
 // ServiceDown handles the service down
@@ -493,7 +481,6 @@ func newHTTPMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 	httpMonitor.SetNotifyRateLimit(mConfig.NotifyRateLimit.Duration)
 	httpMonitor.SetNotifyHandler(notifyHandler)
 	httpMonitor.SetEnableMetrics(metricsEnabled)
-	httpMonitor.SetNotifyConfig(mConfig.NotifyDetails)
 	return httpMonitor, nil
 }
 
