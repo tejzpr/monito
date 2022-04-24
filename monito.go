@@ -228,7 +228,7 @@ func main() {
 			monitors["monitors"] = monitorList
 			return c.JSON(http.StatusOK, monitors)
 		})
-		root.GET("/api/ws", func(c echo.Context) error {
+		root.GET("/api/monitors/ws", func(c echo.Context) error {
 			conn, _, _, err := ws.UpgradeHTTP(c.Request(), c.Response())
 			if err != nil {
 				log.Error(err, "WS: Failed to upgrade websocket connection")
@@ -271,7 +271,7 @@ func main() {
 			}
 
 		})
-		log.Info("Monitostatus Websocket enabled on /api/ws")
+		log.Info("Monitostatus Websocket enabled on /api/monitors/ws")
 	}
 	if isMetricsEnabled {
 		go func() {
