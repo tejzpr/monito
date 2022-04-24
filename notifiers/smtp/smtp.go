@@ -1,4 +1,4 @@
-package notifiers
+package smtp
 
 import (
 	"crypto/tls"
@@ -7,7 +7,21 @@ import (
 	"net/smtp"
 	"strings"
 	"sync"
+
+	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/notifiers"
 )
+
+func init() {
+	notifiers.RegisterNotifier("smtp", InitSMTPNotifier)
+}
+
+// SendConfig is the config for the Webex notifier
+type SendConfig struct {
+	To  []string `json:"to"`
+	Cc  []string `json:"cc"`
+	Bcc []string `json:"bcc"`
+}
 
 // Mail is the email message
 type Mail struct {
@@ -35,8 +49,8 @@ func (mail *Mail) BuildMessage(sender string) string {
 	return header
 }
 
-// SMTPNotifier is the notifier for email
-type SMTPNotifier struct {
+// Notifier is the notifier for email
+type Notifier struct {
 	host      string
 	port      string
 	sender    string
@@ -48,7 +62,7 @@ type SMTPNotifier struct {
 
 // Notify sends the message by email
 // params[0] is the Mail object
-func (s *SMTPNotifier) Notify(params ...interface{}) error {
+func (s *Notifier) Notify(params ...interface{}) error {
 	err := s.validate()
 	if err != nil {
 		return err
@@ -84,16 +98,16 @@ func (s *SMTPNotifier) Notify(params ...interface{}) error {
 	return nil
 }
 
-func (s *SMTPNotifier) serverName() string {
+func (s *Notifier) serverName() string {
 	return s.host + ":" + s.port
 }
 
 // GetName returns the name of the notifier
-func (s *SMTPNotifier) GetName() string {
-	return "email"
+func (s *Notifier) GetName() notifiers.NotifierName {
+	return notifiers.NotifierName("email")
 }
 
-func (s *SMTPNotifier) connect() error {
+func (s *Notifier) connect() error {
 	if s.tls {
 		s.tlsConfig = &tls.Config{
 			InsecureSkipVerify: true,
@@ -120,8 +134,8 @@ func (s *SMTPNotifier) connect() error {
 	return nil
 }
 
-// SMTPNotifierConfig is the config for the SMTP notifier
-type SMTPNotifierConfig struct {
+// NotifierConfig is the config for the SMTP notifier
+type NotifierConfig struct {
 	Enabled bool   `json:"enabled"`
 	Host    string `json:"host"`
 	Port    int    `json:"port"`
@@ -129,19 +143,25 @@ type SMTPNotifierConfig struct {
 	Sender  string `json:"sender"`
 }
 
-// Configure configures the notifier
-// params[0] map[string]interface{} of type SMTPNotifierConfig
-func (s *SMTPNotifier) Configure(params ...interface{}) error {
-	config := params[0].(map[string]interface{})
-	jsonBody, err := json.Marshal(config)
-	if err != nil {
-		return err
+// Validate validates the config
+func (s *NotifierConfig) Validate() error {
+	if !s.Enabled {
+		return fmt.Errorf("disabled")
 	}
-	var smtpConfig SMTPNotifierConfig
-	if err := json.Unmarshal(jsonBody, &smtpConfig); err != nil {
-		return err
+	if s.Host == "" {
+		return fmt.Errorf("host is required")
 	}
+	if s.Port == 0 {
+		return fmt.Errorf("port is required")
+	}
+	if s.Sender == "" {
+		return fmt.Errorf("sender is required")
+	}
+	return nil
+}
 
+// Configure configures the notifier
+func (s *Notifier) Configure(smtpConfig NotifierConfig) error {
 	if !smtpConfig.Enabled {
 		s.enabled = false
 		return fmt.Errorf("disabled")
@@ -155,27 +175,36 @@ func (s *SMTPNotifier) Configure(params ...interface{}) error {
 }
 
 // Close closes the notifier
-func (s *SMTPNotifier) Close() error {
+func (s *Notifier) Close() error {
 	return s.client.Quit()
 }
 
 // Validate validates the notifier
-func (s *SMTPNotifier) validate() error {
+func (s *Notifier) validate() error {
 	if s.client.Noop() != nil {
 		return s.connect()
 	}
 	return nil
 }
 
-var smtpInstance *SMTPNotifier
+var smtpInstance *Notifier
 var smtpOnce sync.Once
 
 // InitSMTPNotifier initializes the smtp notifier
-func InitSMTPNotifier(host string, port string) (*SMTPNotifier, error) {
-	var err error
+func InitSMTPNotifier(configBody []byte) (notifiers.Notifier, error) {
+	var mConfig NotifierConfig
+	if err := json.Unmarshal(configBody, &mConfig); err != nil {
+		log.Errorf(err, "Error unmarshalling config for notifier: smtp")
+		return nil, err
+	}
+	err := mConfig.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	smtpOnce.Do(func() {
-		smtpInstance = &SMTPNotifier{}
-		err = smtpInstance.Configure(host, port)
+		smtpInstance = &Notifier{}
+		err = smtpInstance.Configure(mConfig)
 	})
 	return smtpInstance, err
 }

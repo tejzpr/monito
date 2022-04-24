@@ -47,6 +47,29 @@
                     }
                 }
             }
+        ],
+        "port": [
+            {
+                "name": "LOCALHOST_8080",
+                "host": "localhost",
+                "port": 2000,
+                "protocol": "tcp",
+                "interval": "2s",
+                "timeout": "10s",
+                "maxConcurrentRequests": 1,
+                "maxRetries": -1, 
+                "notifyRateLimit": "30m",
+                "notifyDetails" : {
+                    "webex": {
+                        "roomId": ""
+                    },
+                    "smtp": {
+                        "to": [],
+                        "cc": [],
+                        "bcc": []
+                    }
+                }
+            }
         ]
     }
 }

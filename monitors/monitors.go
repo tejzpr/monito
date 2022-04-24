@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/utils"
 )
 
 var isStringAlphabetic = regexp.MustCompile(`^[a-zA-Z0-9_]*$`).MatchString
@@ -19,6 +21,16 @@ func (m MonitorName) String() string {
 	return symbolsRegexp.ReplaceAllString(string(m), "_")
 }
 
+// MonitorType is a string that represents the type of the monitor
+type MonitorType string
+
+func (m MonitorType) String() string {
+	return symbolsRegexp.ReplaceAllString(string(m), "_")
+}
+
+// NotificationHandler is the function that is called when a monitor is notified
+type NotificationHandler func(monitor Monitor, err error)
+
 // Monitor is an interface that all monoitors must implement
 type Monitor interface {
 	// Run starts the monitor
@@ -27,6 +39,8 @@ type Monitor interface {
 	Stop()
 	// Name returns the name of the monitor
 	Name() MonitorName
+	// Type returns the type of the monitor
+	Type() MonitorType
 	// SetName sets the name of the monitor
 	SetName(name MonitorName)
 	// SetConfig sets the config for the monitor
@@ -55,13 +69,21 @@ type Monitor interface {
 	SetMaxRetries(maxRetries int)
 	// SetNotifyHandler handles the notification failure of the monitor
 	// Calls to this function should be non-blocking
-	SetNotifyHandler(notifyHandler func(state *State, err error))
+	SetNotifyHandler(notifyHandler NotificationHandler)
 	// SetNotifyRateLimit sets the notify rate limit for the monitor
 	SetNotifyRateLimit(notifyRateLimit time.Duration)
 	// GetState returns the state of the monitor
 	GetState() *State
 	// SetEnableMetrics sets the metrics enabled flag for the monitor
 	SetEnableMetrics(enableMetrics bool)
+	// GetErrorNotificatonBody returns the error notification body
+	GetErrorNotificationBody(monitorerr error) string
+	// GetRecoveryNotificationBody returns the recovery notification body
+	GetRecoveryNotificationBody() string
+	// SetNotifyConfig sets the notify config for the monitor
+	SetNotifyConfig(notifyConfig utils.NotifyConfig)
+	// GetNotifyConfig returns the notify config for the monitor
+	GetNotifyConfig() utils.NotifyConfig
 }
 
 // StateStatus is the state of the monitor
@@ -124,4 +146,50 @@ type Logger interface {
 	GetLevel() log.LogLevel
 	// SetLevel sets the log level
 	SetLevel(level log.LogLevel)
+}
+
+var (
+	monitorMu sync.RWMutex
+	monitors  = make(map[string]func(configBody []byte, notifyHandler NotificationHandler, logger Logger, metricsEnabled bool) (Monitor, error))
+)
+
+// RegisterMonitor registers a monitor
+func RegisterMonitor(name string, initFunc func(configBody []byte, notifyHandler NotificationHandler, logger Logger, metricsEnabled bool) (Monitor, error)) error {
+	monitorMu.Lock()
+	defer monitorMu.Unlock()
+	if _, dup := monitors[name]; dup {
+		return fmt.Errorf("monitor is already registered: %s", name)
+	}
+	log.Info("Registering monitor: ", name)
+	monitors[name] = initFunc
+	return nil
+}
+
+// GetMonitor returns a monitor
+func GetMonitor(name string, configBody []byte, notifyHandler NotificationHandler, logger Logger, metricsEnabled bool) (Monitor, error) {
+	monitorMu.RLock()
+	defer monitorMu.RUnlock()
+	if initFunc, ok := monitors[name]; ok {
+		return initFunc(configBody, notifyHandler, logger, metricsEnabled)
+	}
+	return nil, fmt.Errorf("monitor is not registered: %s", name)
+}
+
+// CheckIfMonitorRegistered checks the monitor
+func CheckIfMonitorRegistered(name string) bool {
+	monitorMu.RLock()
+	defer monitorMu.RUnlock()
+	_, ok := monitors[name]
+	return ok
+}
+
+// GetRegisteredMonitorNames returns the registered monitor names
+func GetRegisteredMonitorNames() []string {
+	monitorMu.RLock()
+	defer monitorMu.RUnlock()
+	var names []string
+	for name := range monitors {
+		names = append(names, name)
+	}
+	return names
 }

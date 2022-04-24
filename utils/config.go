@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tejzpr/monito/monitors"
+	"github.com/tejzpr/monito/notifiers/smtp"
+	"github.com/tejzpr/monito/notifiers/webex"
 )
 
 // Duration is a wrapper for time.Duration
@@ -37,42 +38,8 @@ func (duration *Duration) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// HTTPConfigHeader is the header for the HTTP config
-type HTTPConfigHeader struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
-
-// WebexSendConfig is the config for the Webex notifier
-type WebexSendConfig struct {
-	RoomID string `json:"roomId"`
-}
-
-// SMTPSendConfig is the config for the Webex notifier
-type SMTPSendConfig struct {
-	To  []string `json:"to"`
-	Cc  []string `json:"cc"`
-	Bcc []string `json:"bcc"`
-}
-
 // NotifyConfig is the config for the Notify notifier
 type NotifyConfig struct {
-	Webex WebexSendConfig `json:"webex"`
-	SMTP  SMTPSendConfig  `json:"smtp"`
-}
-
-// HTTPConfig is the config for the HTTP monitor
-type HTTPConfig struct {
-	Name                  monitors.MonitorName `json:"name"`
-	URL                   string               `json:"url"`
-	Method                string               `json:"method"`
-	Headers               HTTPConfigHeader     `json:"headers"`
-	ExpectedStatusCode    int                  `json:"expectedStatusCode"`
-	ExpectedResponseBody  string               `json:"expectedResponseBody"`
-	Interval              Duration             `json:"interval"`
-	Timeout               Duration             `json:"timeout"`
-	MaxConcurrentRequests int                  `json:"maxConcurrentRequests"`
-	MaxRetries            int                  `json:"maxRetries"`
-	NotifyRateLimit       Duration             `json:"notifyRateLimit"`
-	NotifyDetails         NotifyConfig         `json:"notifyDetails"`
+	Webex webex.SendConfig `json:"webex"`
+	SMTP  smtp.SendConfig  `json:"smtp"`
 }

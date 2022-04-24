@@ -1,4 +1,4 @@
-package notifiers
+package webex
 
 import (
 	"encoding/json"
@@ -6,10 +6,21 @@ import (
 	"sync"
 
 	webexteams "github.com/jbogarin/go-cisco-webex-teams/sdk"
+	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/notifiers"
 )
 
-// WebexNotifier is the notifier for webex
-type WebexNotifier struct {
+func init() {
+	notifiers.RegisterNotifier("webex", InitWebexNotifier)
+}
+
+// SendConfig is the config for the Webex notifier
+type SendConfig struct {
+	RoomID string `json:"roomId"`
+}
+
+// Notifier is the notifier for webex
+type Notifier struct {
 	enabled        bool
 	accessToken    string
 	roomID         string
@@ -21,7 +32,7 @@ type WebexNotifier struct {
 // Notify sends the message to webex
 // params[0] is the message
 // params[1] is the room id
-func (w *WebexNotifier) Notify(params ...interface{}) error {
+func (w *Notifier) Notify(params ...interface{}) error {
 	if w.client == nil {
 		return fmt.Errorf("webex client is not configured")
 	}
@@ -39,11 +50,11 @@ func (w *WebexNotifier) Notify(params ...interface{}) error {
 }
 
 // GetName returns the name of the notifier
-func (w *WebexNotifier) GetName() string {
-	return "webex"
+func (w *Notifier) GetName() notifiers.NotifierName {
+	return notifiers.NotifierName("webex")
 }
 
-func (w *WebexNotifier) connect() error {
+func (w *Notifier) connect() error {
 	w.connectMutex.Lock()
 	defer w.connectMutex.Unlock()
 	w.client = webexteams.NewClient()
@@ -57,25 +68,25 @@ func (w *WebexNotifier) connect() error {
 	return nil
 }
 
-// WebexNotifierConfig is the config for the Webex notifier
-type WebexNotifierConfig struct {
+// NotifierConfig is the config for the Webex notifier
+type NotifierConfig struct {
 	Enabled     bool   `json:"enabled"`
 	AccessToken string `json:"accessToken"`
 }
 
-// Configure configures the notifier
-// params[0] is map[string]interface{} of type  WebexNotifierConfig
-func (w *WebexNotifier) Configure(params ...interface{}) error {
-	config := params[0].(map[string]interface{})
-	jsonBody, err := json.Marshal(config)
-	if err != nil {
-		return err
+// Validate validates the config
+func (w *NotifierConfig) Validate() error {
+	if !w.Enabled {
+		return fmt.Errorf("disabled")
 	}
-	var webexConfig WebexNotifierConfig
-	if err := json.Unmarshal(jsonBody, &webexConfig); err != nil {
-		return err
+	if w.AccessToken == "" {
+		return fmt.Errorf("accessToken is required")
 	}
+	return nil
+}
 
+// Configure configures the notifier
+func (w *Notifier) Configure(webexConfig NotifierConfig) error {
 	if !webexConfig.Enabled {
 		w.enabled = false
 		return fmt.Errorf("disabled")
@@ -93,19 +104,28 @@ func (w *WebexNotifier) Configure(params ...interface{}) error {
 }
 
 // Close closes the notifier
-func (w *WebexNotifier) Close() error {
+func (w *Notifier) Close() error {
 	return nil
 }
 
-var webexInstance *WebexNotifier
+var webexInstance *Notifier
 var webexOnce sync.Once
 
 // InitWebexNotifier initializes the webex notifier
-func InitWebexNotifier(accessToken string) (*WebexNotifier, error) {
-	var err error
+func InitWebexNotifier(configBody []byte) (notifiers.Notifier, error) {
+	var mConfig NotifierConfig
+	if err := json.Unmarshal(configBody, &mConfig); err != nil {
+		log.Errorf(err, "Error unmarshalling config for notifier: smtp")
+		return nil, err
+	}
+	err := mConfig.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	webexOnce.Do(func() {
-		webexInstance = &WebexNotifier{}
-		err = webexInstance.Configure(accessToken)
+		webexInstance = &Notifier{}
+		err = webexInstance.Configure(mConfig)
 	})
 	return webexInstance, err
 }
