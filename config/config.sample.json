@@ -3,9 +3,16 @@
     "metrics": {
         "prometheus":{
             "enable":true,
-            "enableGoCollector":false,
-            "port": 8430
-        }
+            "enableGoCollector":false
+        },
+        "monitostatus": {
+            "enable": true,
+            "cors": "*"
+        },
+        "pprof": {
+            "enable": false
+        },
+        "port": 8430
     },
     "notifiers": {
         "webex": {
@@ -24,6 +31,7 @@
         "http": [
             {
                 "name": "LOCALHOST_8080",
+                "description": "A monitor for Localhost 8080",
                 "enabled": true,
                 "url": "http://localhost:8080/ping",
                 "expectedStatusCode": 200,
@@ -52,6 +60,7 @@
         "port": [
             {
                 "name": "LOCALHOST_4000",
+                "description": "A monitor for Localhost 4000",
                 "enabled": true,
                 "host": "localhost",
                 "port": 4000,

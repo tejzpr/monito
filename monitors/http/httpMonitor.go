@@ -43,6 +43,7 @@ type Config struct {
 // it implements the Monitor interface
 type Monitor struct {
 	name                  monitors.MonitorName
+	description           string
 	config                *Config
 	logger                monitors.Logger
 	interval              time.Duration
@@ -282,6 +283,16 @@ func (m *Monitor) SetName(name monitors.MonitorName) {
 	m.name = name
 }
 
+// Description returns the description of the monitor
+func (m *Monitor) Description() string {
+	return m.description
+}
+
+// SetDescription sets the description of the monitor
+func (m *Monitor) SetDescription(description string) {
+	m.description = description
+}
+
 // Config returns the config for the monitor
 func (m *Monitor) Config() interface{} {
 	return m.config
@@ -420,29 +431,14 @@ type JSONConfig struct {
 	ExpectedResponseBody string       `json:"expectedResponseBody"`
 }
 
-// Validate validates the config for the HTTP monitor
-func (m *JSONConfig) Validate() error {
-	if m.Name == "" {
-		return fmt.Errorf("Monitor name is required")
-	}
-	if m.Interval.Duration <= 0 {
-		m.Interval.Duration = time.Second * 2
-	}
-
-	if m.Timeout.Duration <= 0 {
-		m.Timeout.Duration = time.Second * 5
-	}
-
-	if m.MaxConcurrentRequests <= 0 {
-		m.MaxConcurrentRequests = 1
-	}
-
-	if m.MaxRetries <= 0 {
-		m.MaxRetries = 0
-	}
-
-	if m.NotifyRateLimit.Duration <= 0 {
-		m.NotifyRateLimit.Duration = 0
+// Validate validates the config for the Port monitor
+func (m *JSONConfig) monitorFieldsValidate() error {
+	if m.URL == "" {
+		return errors.New("URL is required")
+	} else if m.Method == "" {
+		return errors.New("Method is required")
+	} else if m.ExpectedStatusCode == 0 {
+		return errors.New("ExpectedStatusCode is required")
 	}
 	return nil
 }
@@ -458,7 +454,10 @@ func newHTTPMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 	if err != nil {
 		return nil, err
 	}
-
+	err = mConfig.monitorFieldsValidate()
+	if err != nil {
+		return nil, err
+	}
 	httpConfig := &Config{
 		URL:                mConfig.URL,
 		Method:             mConfig.Method,
@@ -472,6 +471,7 @@ func newHTTPMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 	if err != nil {
 		return nil, err
 	}
+	httpMonitor.SetDescription(mConfig.Description)
 	httpMonitor.SetLogger(logger)
 	httpMonitor.SetEnabled(mConfig.Enabled)
 	httpMonitor.SetInterval(mConfig.Interval.Duration)

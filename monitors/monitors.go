@@ -34,12 +34,45 @@ type NotificationHandler func(monitor Monitor, err error)
 // JSONBaseConfig is the base JSON config for all monitors
 type JSONBaseConfig struct {
 	Name                  MonitorName    `json:"name"`
+	Description           string         `json:"description"`
 	Enabled               bool           `json:"enabled"`
 	Interval              utils.Duration `json:"interval"`
 	Timeout               utils.Duration `json:"timeout"`
 	MaxConcurrentRequests int            `json:"maxConcurrentRequests"`
 	MaxRetries            int            `json:"maxRetries"`
 	NotifyRateLimit       utils.Duration `json:"notifyRateLimit"`
+}
+
+// Validate validates the config for the Port monitor
+func (m *JSONBaseConfig) Validate() error {
+	if m.Name == "" {
+		return fmt.Errorf("Monitor name is required")
+	}
+	if m.Description == "" {
+		return fmt.Errorf("Monitor description is required for: %s", m.Name)
+	} else if len(m.Description) > 255 {
+		return fmt.Errorf("Monitor description is too long for: %s", m.Name)
+	}
+	if m.Interval.Duration <= 0 {
+		m.Interval.Duration = time.Second * 2
+	}
+
+	if m.Timeout.Duration <= 0 {
+		m.Timeout.Duration = time.Second * 5
+	}
+
+	if m.MaxConcurrentRequests <= 0 {
+		m.MaxConcurrentRequests = 1
+	}
+
+	if m.MaxRetries <= 0 {
+		m.MaxRetries = 0
+	}
+
+	if m.NotifyRateLimit.Duration <= 0 {
+		m.NotifyRateLimit.Duration = 0
+	}
+	return nil
 }
 
 // Monitor is an interface that all monoitors must implement
@@ -50,10 +83,14 @@ type Monitor interface {
 	Stop()
 	// Name returns the name of the monitor
 	Name() MonitorName
-	// Type returns the type of the monitor
-	Type() MonitorType
 	// SetName sets the name of the monitor
 	SetName(name MonitorName)
+	// Description returns the description of the monitor
+	Description() string
+	// SetDescription sets the description of the monitor
+	SetDescription(description string)
+	// Type returns the type of the monitor
+	Type() MonitorType
 	// SetConfig sets the config for the monitor
 	SetConfig(config interface{}) error
 	// Config returns the config for the monitor
@@ -107,9 +144,9 @@ const (
 
 // State is the state of the monitor
 type State struct {
-	Previous        StateStatus
-	Current         StateStatus
-	StateChangeTime time.Time
+	Previous        StateStatus `json:"-"`
+	Current         StateStatus `json:"status"`
+	StateChangeTime time.Time   `json:"timestamp"`
 }
 
 // Get returns the current state of the monitor

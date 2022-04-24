@@ -89,6 +89,7 @@ func (pm *Metrics) ServiceUp() {
 // it implements the Monitor interface
 type Monitor struct {
 	name                  monitors.MonitorName
+	description           string
 	config                *Config
 	logger                monitors.Logger
 	interval              time.Duration
@@ -277,6 +278,16 @@ func (m *Monitor) SetName(name monitors.MonitorName) {
 	m.name = name
 }
 
+// Description returns the description of the monitor
+func (m *Monitor) Description() string {
+	return m.description
+}
+
+// SetDescription sets the description of the monitor
+func (m *Monitor) SetDescription(description string) {
+	m.description = description
+}
+
 // Config returns the config for the monitor
 func (m *Monitor) Config() interface{} {
 	return m.config
@@ -412,28 +423,13 @@ type JSONConfig struct {
 }
 
 // Validate validates the config for the Port monitor
-func (m *JSONConfig) Validate() error {
-	if m.Name == "" {
-		return fmt.Errorf("Monitor name is required")
-	}
-	if m.Interval.Duration <= 0 {
-		m.Interval.Duration = time.Second * 2
-	}
-
-	if m.Timeout.Duration <= 0 {
-		m.Timeout.Duration = time.Second * 5
-	}
-
-	if m.MaxConcurrentRequests <= 0 {
-		m.MaxConcurrentRequests = 1
-	}
-
-	if m.MaxRetries <= 0 {
-		m.MaxRetries = 0
-	}
-
-	if m.NotifyRateLimit.Duration <= 0 {
-		m.NotifyRateLimit.Duration = 0
+func (m *JSONConfig) monitorFieldsValidate() error {
+	if m.Host == "" {
+		return errors.New("Host is required")
+	} else if m.Protocol.String() == "" {
+		return errors.New("Protocol is required")
+	} else if m.Port == 0 {
+		return errors.New("Port is required")
 	}
 	return nil
 }
@@ -449,7 +445,10 @@ func newPortMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 	if err != nil {
 		return nil, err
 	}
-
+	err = mConfig.monitorFieldsValidate()
+	if err != nil {
+		return nil, err
+	}
 	portConfig := &Config{
 		Host:     mConfig.Host,
 		Port:     mConfig.Port,
@@ -462,6 +461,7 @@ func newPortMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 	if err != nil {
 		return nil, err
 	}
+	portMonitor.SetDescription(mConfig.Description)
 	portMonitor.SetLogger(logger)
 	portMonitor.SetEnabled(mConfig.Enabled)
 	portMonitor.SetInterval(mConfig.Interval.Duration)
