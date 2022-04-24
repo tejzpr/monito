@@ -24,8 +24,8 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// HTTP is the config for the HTTP monitor
-type HTTP struct {
+// Config is the config for the HTTP monitor
+type Config struct {
 	// URL is the URL to monitor
 	URL string `json:"url"`
 	// Method is the HTTP method to use
@@ -40,11 +40,11 @@ type HTTP struct {
 	ExpectedBody string `json:"expectedBody"`
 }
 
-// HTTPMonitor is a monitor that monitors http endpoints
+// Monitor is a monitor that monitors http endpoints
 // it implements the Monitor interface
-type HTTPMonitor struct {
+type Monitor struct {
 	name                  monitors.MonitorName
-	config                *HTTP
+	config                *Config
 	logger                monitors.Logger
 	interval              time.Duration
 	timeOut               time.Duration
@@ -58,7 +58,7 @@ type HTTPMonitor struct {
 	notifyRate            rate.Limit
 	notifyRateLimit       time.Duration
 	metricsEnabled        bool
-	metrics               *HTTPMetrics
+	metrics               *Metrics
 	notifyLimiter         *rate.Limiter
 	notifyConfig          utils.NotifyConfig
 	state                 *monitors.State
@@ -68,13 +68,13 @@ type HTTPMonitor struct {
 	retryCounter          int
 }
 
-// HTTPMetrics the metrics for the monitor
-type HTTPMetrics struct {
+// Metrics the metrics for the monitor
+type Metrics struct {
 	ServiceStatusGauge prometheus.Gauge
 }
 
 // StartSericeStatusGauge initializes the service status gauge
-func (hm *HTTPMetrics) StartSericeStatusGauge(name string) {
+func (hm *Metrics) StartSericeStatusGauge(name string) {
 	hm.ServiceStatusGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "monito",
 		Subsystem: "http_metrics",
@@ -85,27 +85,27 @@ func (hm *HTTPMetrics) StartSericeStatusGauge(name string) {
 }
 
 // SetNotifyConfig sets the notify config for the monitor
-func (m *HTTPMonitor) SetNotifyConfig(notifyConfig utils.NotifyConfig) {
+func (m *Monitor) SetNotifyConfig(notifyConfig utils.NotifyConfig) {
 	m.notifyConfig = notifyConfig
 }
 
 // GetNotifyConfig gets the notify config for the monitor
-func (m *HTTPMonitor) GetNotifyConfig() utils.NotifyConfig {
+func (m *Monitor) GetNotifyConfig() utils.NotifyConfig {
 	return m.notifyConfig
 }
 
 // ServiceDown handles the service down
-func (hm *HTTPMetrics) ServiceDown() {
+func (hm *Metrics) ServiceDown() {
 	hm.ServiceStatusGauge.Dec()
 }
 
 // ServiceUp handles the service down
-func (hm *HTTPMetrics) ServiceUp() {
+func (hm *Metrics) ServiceUp() {
 	hm.ServiceStatusGauge.Inc()
 }
 
 // Run starts the monitor
-func (m *HTTPMonitor) Run(ctx context.Context) error {
+func (m *Monitor) Run(ctx context.Context) error {
 	if !m.enabled {
 		return nil
 	}
@@ -121,7 +121,7 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 		}
 
 		if m.metricsEnabled {
-			m.metrics = &HTTPMetrics{}
+			m.metrics = &Metrics{}
 			m.metrics.StartSericeStatusGauge(m.name.String())
 		}
 
@@ -200,12 +200,12 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 }
 
 // SetNotifyHandler sets the notify handler for the monitor
-func (m *HTTPMonitor) SetNotifyHandler(notifyHandler monitors.NotificationHandler) {
+func (m *Monitor) SetNotifyHandler(notifyHandler monitors.NotificationHandler) {
 	m.notifyHandler = notifyHandler
 }
 
 // HandleFailure handles a failure
-func (m *HTTPMonitor) HandleFailure(err error) error {
+func (m *Monitor) HandleFailure(err error) error {
 	m.logger.Debugf("Monitor failed with error %s", err.Error())
 	if m.state.Get().Current == monitors.StateStatusOK {
 		m.metrics.ServiceDown()
@@ -222,7 +222,7 @@ func (m *HTTPMonitor) HandleFailure(err error) error {
 }
 
 // run runs the monitor
-func (m *HTTPMonitor) run() error {
+func (m *Monitor) run() error {
 	defer m.sem.Release(1)
 
 	m.logger.Debugf("Running HTTP Request for monitor: %s", m.name)
@@ -280,28 +280,28 @@ func (m *HTTPMonitor) run() error {
 }
 
 // Name returns the name of the monitor
-func (m *HTTPMonitor) Name() monitors.MonitorName {
+func (m *Monitor) Name() monitors.MonitorName {
 	return m.name
 }
 
 // Type returns the type of the monitor
-func (m *HTTPMonitor) Type() monitors.MonitorType {
+func (m *Monitor) Type() monitors.MonitorType {
 	return monitors.MonitorType("http")
 }
 
 // SetName sets the name of the monitor
-func (m *HTTPMonitor) SetName(name monitors.MonitorName) {
+func (m *Monitor) SetName(name monitors.MonitorName) {
 	m.name = name
 }
 
 // Config returns the config for the monitor
-func (m *HTTPMonitor) Config() interface{} {
+func (m *Monitor) Config() interface{} {
 	return m.config
 }
 
 // SetConfig sets the config for the monitor
-func (m *HTTPMonitor) SetConfig(config interface{}) error {
-	conf := config.(*HTTP)
+func (m *Monitor) SetConfig(config interface{}) error {
+	conf := config.(*Config)
 	if conf.URL == "" {
 		return errors.New("URL is required")
 	} else if conf.Method == "" {
@@ -314,86 +314,86 @@ func (m *HTTPMonitor) SetConfig(config interface{}) error {
 }
 
 // Logger returns the logger for the monitor
-func (m *HTTPMonitor) Logger() monitors.Logger {
+func (m *Monitor) Logger() monitors.Logger {
 	return m.logger
 }
 
 // SetLogger sets the logger for the monitor
-func (m *HTTPMonitor) SetLogger(logger monitors.Logger) {
+func (m *Monitor) SetLogger(logger monitors.Logger) {
 	m.logger = logger
 }
 
 // Interval returns the interval for the monitor
 // HTTP Requests are sent only after previous request has completed
-func (m *HTTPMonitor) Interval() time.Duration {
+func (m *Monitor) Interval() time.Duration {
 	return m.interval
 }
 
 // SetInterval sets the interval for the monitor
-func (m *HTTPMonitor) SetInterval(interval time.Duration) {
+func (m *Monitor) SetInterval(interval time.Duration) {
 	m.interval = interval
 }
 
 // Enabled returns the enabled flag for the monitor
-func (m *HTTPMonitor) Enabled() bool {
+func (m *Monitor) Enabled() bool {
 	return m.enabled
 }
 
 // SetEnabled sets the enabled flag for the monitor
-func (m *HTTPMonitor) SetEnabled(enabled bool) {
+func (m *Monitor) SetEnabled(enabled bool) {
 	m.enabled = enabled
 }
 
 // TimeOut returns the timeout for the monitor
-func (m *HTTPMonitor) TimeOut() time.Duration {
+func (m *Monitor) TimeOut() time.Duration {
 	return m.timeOut
 }
 
 // SetTimeOut sets the timeout for the monitor
-func (m *HTTPMonitor) SetTimeOut(timeOut time.Duration) {
+func (m *Monitor) SetTimeOut(timeOut time.Duration) {
 	m.timeOut = timeOut
 }
 
 // SetMaxConcurrentRequests sets the max concurrent requests for the monitor
-func (m *HTTPMonitor) SetMaxConcurrentRequests(maxConcurrentRequests int) {
+func (m *Monitor) SetMaxConcurrentRequests(maxConcurrentRequests int) {
 	m.maxConcurrentRequests = maxConcurrentRequests
 	m.sem = semaphore.NewWeighted(int64(m.maxConcurrentRequests))
 }
 
 // SetMaxRetries sets the max retries for the monitor
-func (m *HTTPMonitor) SetMaxRetries(maxRetries int) {
+func (m *Monitor) SetMaxRetries(maxRetries int) {
 	m.maxRetries = maxRetries
 }
 
 // SetNotifyRateLimit sets the notify rate limit for the monitor
-func (m *HTTPMonitor) SetNotifyRateLimit(notifyRateLimit time.Duration) {
+func (m *Monitor) SetNotifyRateLimit(notifyRateLimit time.Duration) {
 	m.notifyRateLimit = notifyRateLimit
 	m.notifyRate = rate.Every(notifyRateLimit)
 	m.resetNotifyLimiter()
 }
 
-func (m *HTTPMonitor) resetNotifyLimiter() {
+func (m *Monitor) resetNotifyLimiter() {
 	m.notifyLimiter = rate.NewLimiter(m.notifyRate, 1)
 }
 
 // Stop stops the monitor
-func (m *HTTPMonitor) Stop() {
+func (m *Monitor) Stop() {
 	m.logger.Info("Stopping: ", m.name.String())
 	m.stopChannel <- true
 }
 
 // GetState returns the state of the monitor
-func (m *HTTPMonitor) GetState() *monitors.State {
+func (m *Monitor) GetState() *monitors.State {
 	return m.state.Get()
 }
 
 // SetEnableMetrics sets the enable metrics flag for the monitor
-func (m *HTTPMonitor) SetEnableMetrics(enableMetrics bool) {
+func (m *Monitor) SetEnableMetrics(enableMetrics bool) {
 	m.metricsEnabled = enableMetrics
 }
 
 // GetRecoveryNotificationBody returns the recovery notification body
-func (m *HTTPMonitor) GetRecoveryNotificationBody() string {
+func (m *Monitor) GetRecoveryNotificationBody() string {
 	loc, _ := time.LoadLocation("UTC")
 	return fmt.Sprintf("Recovered in monitor [%s]: %s \nType: %s\nRecovered URL: %s\nRecovered On: %s",
 		m.Name(),
@@ -404,7 +404,7 @@ func (m *HTTPMonitor) GetRecoveryNotificationBody() string {
 }
 
 // GetErrorNotificationBody returns the error notification body
-func (m *HTTPMonitor) GetErrorNotificationBody(monitorerr error) string {
+func (m *Monitor) GetErrorNotificationBody(monitorerr error) string {
 	loc, _ := time.LoadLocation("UTC")
 	now := time.Now()
 	return fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s\nAlerted On: %s\nNext Possible Alert In: %s",
@@ -416,30 +416,24 @@ func (m *HTTPMonitor) GetErrorNotificationBody(monitorerr error) string {
 		m.notifyRateLimit.String())
 }
 
-// HTTPConfigHeader is the header for the HTTP config
-type HTTPConfigHeader struct {
+// ConfigHeader is the header for the HTTP config
+type ConfigHeader struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
-// HTTPJSONConfig is the config for the HTTP monitor
-type HTTPJSONConfig struct {
-	Name                  monitors.MonitorName `json:"name"`
-	URL                   string               `json:"url"`
-	Method                string               `json:"method"`
-	Headers               HTTPConfigHeader     `json:"headers"`
-	ExpectedStatusCode    int                  `json:"expectedStatusCode"`
-	ExpectedResponseBody  string               `json:"expectedResponseBody"`
-	Interval              utils.Duration       `json:"interval"`
-	Timeout               utils.Duration       `json:"timeout"`
-	MaxConcurrentRequests int                  `json:"maxConcurrentRequests"`
-	MaxRetries            int                  `json:"maxRetries"`
-	NotifyRateLimit       utils.Duration       `json:"notifyRateLimit"`
-	NotifyDetails         utils.NotifyConfig   `json:"notifyDetails"`
+// JSONConfig is the config for the HTTP monitor
+type JSONConfig struct {
+	monitors.JSONBaseConfig
+	URL                  string       `json:"url"`
+	Method               string       `json:"method"`
+	Headers              ConfigHeader `json:"headers"`
+	ExpectedStatusCode   int          `json:"expectedStatusCode"`
+	ExpectedResponseBody string       `json:"expectedResponseBody"`
 }
 
 // Validate validates the config for the HTTP monitor
-func (m *HTTPJSONConfig) Validate() error {
+func (m *JSONConfig) Validate() error {
 	if m.Name == "" {
 		return fmt.Errorf("Monitor name is required")
 	}
@@ -467,7 +461,7 @@ func (m *HTTPJSONConfig) Validate() error {
 
 // newHTTPMonitor creates a new HTTP monitor
 func newHTTPMonitor(configBody []byte, notifyHandler monitors.NotificationHandler, logger monitors.Logger, metricsEnabled bool) (monitors.Monitor, error) {
-	var mConfig HTTPJSONConfig
+	var mConfig JSONConfig
 	if err := json.Unmarshal(configBody, &mConfig); err != nil {
 		log.Errorf(err, "Error unmarshalling config for monitor: http")
 		return nil, err
@@ -477,21 +471,21 @@ func newHTTPMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 		return nil, err
 	}
 
-	httpConfig := &HTTP{
+	httpConfig := &Config{
 		URL:                mConfig.URL,
 		Method:             mConfig.Method,
 		ExpectedBody:       mConfig.ExpectedResponseBody,
 		ExpectedStatusCode: mConfig.ExpectedStatusCode,
 	}
 
-	httpMonitor := &HTTPMonitor{}
+	httpMonitor := &Monitor{}
 	httpMonitor.SetName(mConfig.Name)
 	err = httpMonitor.SetConfig(httpConfig)
 	if err != nil {
 		return nil, err
 	}
 	httpMonitor.SetLogger(logger)
-	httpMonitor.SetEnabled(true)
+	httpMonitor.SetEnabled(mConfig.Enabled)
 	httpMonitor.SetInterval(mConfig.Interval.Duration)
 	httpMonitor.SetTimeOut(mConfig.Timeout.Duration)
 	httpMonitor.SetMaxConcurrentRequests(mConfig.MaxConcurrentRequests)

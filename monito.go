@@ -149,6 +149,10 @@ func main() {
 					log.Info("Stopped monitor: ", monitor.Name().String())
 					monitorWG.Done()
 				}()
+				if !monitor.Enabled() {
+					log.Info("Monitor is disabled: ", monitor.Name().String())
+					return nil
+				}
 				log.Info("Running monitor: ", monitor.Name().String())
 				err := monitor.Run(context.Background())
 				if err != nil {
@@ -194,7 +198,9 @@ func main() {
 
 		go func() {
 			for _, monitor := range configuredMonitors {
-				monitor.Stop()
+				if monitor.Enabled() {
+					monitor.Stop()
+				}
 			}
 			notifiers.StopAll()
 			closeMonitorsChan <- struct{}{}
@@ -209,7 +215,11 @@ func main() {
 
 	}()
 
-	go monitorWG.Wait()
+	go func() {
+		monitorWG.Wait()
+		log.Info("No more monitors to run")
+		stopper <- syscall.SIGTERM
+	}()
 	<-closeMonitorsChan
 	log.Info("Monitors stopped")
 	log.Info("Exiting.")

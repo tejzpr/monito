@@ -31,6 +31,18 @@ func (m MonitorType) String() string {
 // NotificationHandler is the function that is called when a monitor is notified
 type NotificationHandler func(monitor Monitor, err error)
 
+// JSONBaseConfig is the base JSON config for all monitors
+type JSONBaseConfig struct {
+	Name                  MonitorName        `json:"name"`
+	Enabled               bool               `json:"enabled"`
+	Interval              utils.Duration     `json:"interval"`
+	Timeout               utils.Duration     `json:"timeout"`
+	MaxConcurrentRequests int                `json:"maxConcurrentRequests"`
+	MaxRetries            int                `json:"maxRetries"`
+	NotifyRateLimit       utils.Duration     `json:"notifyRateLimit"`
+	NotifyDetails         utils.NotifyConfig `json:"notifyDetails"`
+}
+
 // Monitor is an interface that all monoitors must implement
 type Monitor interface {
 	// Run starts the monitor

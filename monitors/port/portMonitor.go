@@ -50,8 +50,8 @@ func (n NetworkProtocol) String() string {
 	return string(n)
 }
 
-// Port is the config for the Port monitor
-type Port struct {
+// Config is the config for the Port monitor
+type Config struct {
 	// Host is the host to monitor
 	Host string `json:"host"`
 	// Port is the Port to monitor
@@ -60,13 +60,13 @@ type Port struct {
 	Protocol NetworkProtocol `json:"protocol"`
 }
 
-// PortMetrics the metrics for the monitor
-type PortMetrics struct {
+// Metrics the metrics for the monitor
+type Metrics struct {
 	ServiceStatusGauge prometheus.Gauge
 }
 
 // StartSericeStatusGauge initializes the service status gauge
-func (pm *PortMetrics) StartSericeStatusGauge(name string) {
+func (pm *Metrics) StartSericeStatusGauge(name string) {
 	pm.ServiceStatusGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "monito",
 		Subsystem: "port_metrics",
@@ -77,20 +77,20 @@ func (pm *PortMetrics) StartSericeStatusGauge(name string) {
 }
 
 // ServiceDown handles the service down
-func (pm *PortMetrics) ServiceDown() {
+func (pm *Metrics) ServiceDown() {
 	pm.ServiceStatusGauge.Dec()
 }
 
 // ServiceUp handles the service down
-func (pm *PortMetrics) ServiceUp() {
+func (pm *Metrics) ServiceUp() {
 	pm.ServiceStatusGauge.Inc()
 }
 
-// PortMonitor is a monitor that monitors ports
+// Monitor is a monitor that monitors ports
 // it implements the Monitor interface
-type PortMonitor struct {
+type Monitor struct {
 	name                  monitors.MonitorName
-	config                *Port
+	config                *Config
 	logger                monitors.Logger
 	interval              time.Duration
 	timeOut               time.Duration
@@ -103,7 +103,7 @@ type PortMonitor struct {
 	notifyRate            rate.Limit
 	notifyRateLimit       time.Duration
 	metricsEnabled        bool
-	metrics               *PortMetrics
+	metrics               *Metrics
 	notifyLimiter         *rate.Limiter
 	notifyConfig          utils.NotifyConfig
 	state                 *monitors.State
@@ -114,7 +114,7 @@ type PortMonitor struct {
 }
 
 // CheckPort checks if a port is open
-func (m *PortMonitor) CheckPort() error {
+func (m *Monitor) CheckPort() error {
 	conn, err := net.DialTimeout(m.config.Protocol.String(), net.JoinHostPort(m.config.Host, strconv.FormatUint(m.config.Port, 10)), m.timeOut)
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func (m *PortMonitor) CheckPort() error {
 }
 
 // Run starts the monitor
-func (m *PortMonitor) Run(ctx context.Context) error {
+func (m *Monitor) Run(ctx context.Context) error {
 	if !m.enabled {
 		return nil
 	}
@@ -143,7 +143,7 @@ func (m *PortMonitor) Run(ctx context.Context) error {
 		}
 
 		if m.metricsEnabled {
-			m.metrics = &PortMetrics{}
+			m.metrics = &Metrics{}
 			m.metrics.StartSericeStatusGauge(m.name.String())
 		}
 
@@ -209,12 +209,12 @@ func (m *PortMonitor) Run(ctx context.Context) error {
 }
 
 // SetNotifyHandler sets the notify handler for the monitor
-func (m *PortMonitor) SetNotifyHandler(notifyHandler monitors.NotificationHandler) {
+func (m *Monitor) SetNotifyHandler(notifyHandler monitors.NotificationHandler) {
 	m.notifyHandler = notifyHandler
 }
 
 // HandleFailure handles a failure
-func (m *PortMonitor) HandleFailure(err error) error {
+func (m *Monitor) HandleFailure(err error) error {
 	m.logger.Debugf("Monitor failed with error %s", err.Error())
 	if m.state.Get().Current == monitors.StateStatusOK {
 		m.metrics.ServiceDown()
@@ -231,7 +231,7 @@ func (m *PortMonitor) HandleFailure(err error) error {
 }
 
 // run runs the monitor
-func (m *PortMonitor) run() error {
+func (m *Monitor) run() error {
 	defer m.sem.Release(1)
 
 	m.logger.Debugf("Running Port Request for monitor: %s", m.name)
@@ -265,28 +265,28 @@ func (m *PortMonitor) run() error {
 }
 
 // Name returns the name of the monitor
-func (m *PortMonitor) Name() monitors.MonitorName {
+func (m *Monitor) Name() monitors.MonitorName {
 	return m.name
 }
 
 // Type returns the type of the monitor
-func (m *PortMonitor) Type() monitors.MonitorType {
+func (m *Monitor) Type() monitors.MonitorType {
 	return monitors.MonitorType("port")
 }
 
 // SetName sets the name of the monitor
-func (m *PortMonitor) SetName(name monitors.MonitorName) {
+func (m *Monitor) SetName(name monitors.MonitorName) {
 	m.name = name
 }
 
 // Config returns the config for the monitor
-func (m *PortMonitor) Config() interface{} {
+func (m *Monitor) Config() interface{} {
 	return m.config
 }
 
 // SetConfig sets the config for the monitor
-func (m *PortMonitor) SetConfig(config interface{}) error {
-	conf := config.(*Port)
+func (m *Monitor) SetConfig(config interface{}) error {
+	conf := config.(*Config)
 	if conf.Host == "" {
 		return errors.New("Host is required")
 	} else if conf.Protocol.String() == "" {
@@ -299,96 +299,96 @@ func (m *PortMonitor) SetConfig(config interface{}) error {
 }
 
 // Logger returns the logger for the monitor
-func (m *PortMonitor) Logger() monitors.Logger {
+func (m *Monitor) Logger() monitors.Logger {
 	return m.logger
 }
 
 // SetLogger sets the logger for the monitor
-func (m *PortMonitor) SetLogger(logger monitors.Logger) {
+func (m *Monitor) SetLogger(logger monitors.Logger) {
 	m.logger = logger
 }
 
 // Interval returns the interval for the monitor
 // HTTP Requests are sent only after previous request has completed
-func (m *PortMonitor) Interval() time.Duration {
+func (m *Monitor) Interval() time.Duration {
 	return m.interval
 }
 
 // SetInterval sets the interval for the monitor
-func (m *PortMonitor) SetInterval(interval time.Duration) {
+func (m *Monitor) SetInterval(interval time.Duration) {
 	m.interval = interval
 }
 
 // Enabled returns the enabled flag for the monitor
-func (m *PortMonitor) Enabled() bool {
+func (m *Monitor) Enabled() bool {
 	return m.enabled
 }
 
 // SetEnabled sets the enabled flag for the monitor
-func (m *PortMonitor) SetEnabled(enabled bool) {
+func (m *Monitor) SetEnabled(enabled bool) {
 	m.enabled = enabled
 }
 
 // TimeOut returns the timeout for the monitor
-func (m *PortMonitor) TimeOut() time.Duration {
+func (m *Monitor) TimeOut() time.Duration {
 	return m.timeOut
 }
 
 // SetTimeOut sets the timeout for the monitor
-func (m *PortMonitor) SetTimeOut(timeOut time.Duration) {
+func (m *Monitor) SetTimeOut(timeOut time.Duration) {
 	m.timeOut = timeOut
 }
 
 // SetMaxConcurrentRequests sets the max concurrent requests for the monitor
-func (m *PortMonitor) SetMaxConcurrentRequests(maxConcurrentRequests int) {
+func (m *Monitor) SetMaxConcurrentRequests(maxConcurrentRequests int) {
 	m.maxConcurrentRequests = maxConcurrentRequests
 	m.sem = semaphore.NewWeighted(int64(m.maxConcurrentRequests))
 }
 
 // SetMaxRetries sets the max retries for the monitor
-func (m *PortMonitor) SetMaxRetries(maxRetries int) {
+func (m *Monitor) SetMaxRetries(maxRetries int) {
 	m.maxRetries = maxRetries
 }
 
 // SetNotifyRateLimit sets the notify rate limit for the monitor
-func (m *PortMonitor) SetNotifyRateLimit(notifyRateLimit time.Duration) {
+func (m *Monitor) SetNotifyRateLimit(notifyRateLimit time.Duration) {
 	m.notifyRateLimit = notifyRateLimit
 	m.notifyRate = rate.Every(notifyRateLimit)
 	m.resetNotifyLimiter()
 }
 
-func (m *PortMonitor) resetNotifyLimiter() {
+func (m *Monitor) resetNotifyLimiter() {
 	m.notifyLimiter = rate.NewLimiter(m.notifyRate, 1)
 }
 
 // SetNotifyConfig sets the notify config for the monitor
-func (m *PortMonitor) SetNotifyConfig(notifyConfig utils.NotifyConfig) {
+func (m *Monitor) SetNotifyConfig(notifyConfig utils.NotifyConfig) {
 	m.notifyConfig = notifyConfig
 }
 
 // GetNotifyConfig gets the notify config for the monitor
-func (m *PortMonitor) GetNotifyConfig() utils.NotifyConfig {
+func (m *Monitor) GetNotifyConfig() utils.NotifyConfig {
 	return m.notifyConfig
 }
 
 // Stop stops the monitor
-func (m *PortMonitor) Stop() {
+func (m *Monitor) Stop() {
 	m.logger.Info("Stopping: ", m.name.String())
 	m.stopChannel <- true
 }
 
 // GetState returns the state of the monitor
-func (m *PortMonitor) GetState() *monitors.State {
+func (m *Monitor) GetState() *monitors.State {
 	return m.state.Get()
 }
 
 // SetEnableMetrics sets the enable metrics flag for the monitor
-func (m *PortMonitor) SetEnableMetrics(enableMetrics bool) {
+func (m *Monitor) SetEnableMetrics(enableMetrics bool) {
 	m.metricsEnabled = enableMetrics
 }
 
 // GetRecoveryNotificationBody returns the recovery notification body
-func (m *PortMonitor) GetRecoveryNotificationBody() string {
+func (m *Monitor) GetRecoveryNotificationBody() string {
 	loc, _ := time.LoadLocation("UTC")
 	return fmt.Sprintf("Recovered in monitor [%s]: %s \nType: %s\nRecovered [protocol://host:port]: %s://%s:%d\nRecovered On: %s",
 		m.Name(),
@@ -401,7 +401,7 @@ func (m *PortMonitor) GetRecoveryNotificationBody() string {
 }
 
 // GetErrorNotificationBody returns the error notification body
-func (m *PortMonitor) GetErrorNotificationBody(monitorerr error) string {
+func (m *Monitor) GetErrorNotificationBody(monitorerr error) string {
 	loc, _ := time.LoadLocation("UTC")
 	now := time.Now()
 	return fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed [protocol://host:port]: %s://%s:%d\nAlerted On: %s\nNext Possible Alert In: %s",
@@ -415,22 +415,16 @@ func (m *PortMonitor) GetErrorNotificationBody(monitorerr error) string {
 		m.notifyRateLimit.String())
 }
 
-// PortJSONConfig is the config for the Ping monitor
-type PortJSONConfig struct {
-	Name                  monitors.MonitorName `json:"name"`
-	Host                  string               `json:"host"`
-	Port                  uint64               `json:"port"`
-	Protocol              NetworkProtocol      `json:"protocol"`
-	Interval              utils.Duration       `json:"interval"`
-	Timeout               utils.Duration       `json:"timeout"`
-	MaxConcurrentRequests int                  `json:"maxConcurrentRequests"`
-	MaxRetries            int                  `json:"maxRetries"`
-	NotifyRateLimit       utils.Duration       `json:"notifyRateLimit"`
-	NotifyDetails         utils.NotifyConfig   `json:"notifyDetails"`
+// JSONConfig is the config for the Ping monitor
+type JSONConfig struct {
+	monitors.JSONBaseConfig
+	Host     string          `json:"host"`
+	Port     uint64          `json:"port"`
+	Protocol NetworkProtocol `json:"protocol"`
 }
 
 // Validate validates the config for the Port monitor
-func (m *PortJSONConfig) Validate() error {
+func (m *JSONConfig) Validate() error {
 	if m.Name == "" {
 		return fmt.Errorf("Monitor name is required")
 	}
@@ -458,7 +452,7 @@ func (m *PortJSONConfig) Validate() error {
 
 // newPortMonitor creates a new Port monitor
 func newPortMonitor(configBody []byte, notifyHandler monitors.NotificationHandler, logger monitors.Logger, metricsEnabled bool) (monitors.Monitor, error) {
-	var mConfig PortJSONConfig
+	var mConfig JSONConfig
 	if err := json.Unmarshal(configBody, &mConfig); err != nil {
 		log.Errorf(err, "Error unmarshalling config for monitor: http")
 		return nil, err
@@ -468,20 +462,20 @@ func newPortMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 		return nil, err
 	}
 
-	portConfig := &Port{
+	portConfig := &Config{
 		Host:     mConfig.Host,
 		Port:     mConfig.Port,
 		Protocol: mConfig.Protocol,
 	}
 
-	portMonitor := &PortMonitor{}
+	portMonitor := &Monitor{}
 	portMonitor.SetName(mConfig.Name)
 	err = portMonitor.SetConfig(portConfig)
 	if err != nil {
 		return nil, err
 	}
 	portMonitor.SetLogger(logger)
-	portMonitor.SetEnabled(true)
+	portMonitor.SetEnabled(mConfig.Enabled)
 	portMonitor.SetInterval(mConfig.Interval.Duration)
 	portMonitor.SetTimeOut(mConfig.Timeout.Duration)
 	portMonitor.SetMaxConcurrentRequests(mConfig.MaxConcurrentRequests)

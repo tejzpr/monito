@@ -24,6 +24,7 @@
         "http": [
             {
                 "name": "LOCALHOST_8080",
+                "enabled": true,
                 "url": "http://localhost:8080/ping",
                 "expectedStatusCode": 200,
                 "expectedResponseBody": ".",
@@ -50,9 +51,10 @@
         ],
         "port": [
             {
-                "name": "LOCALHOST_8080",
+                "name": "LOCALHOST_4000",
+                "enabled": true,
                 "host": "localhost",
-                "port": 2000,
+                "port": 4000,
                 "protocol": "tcp",
                 "interval": "2s",
                 "timeout": "10s",
