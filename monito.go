@@ -302,7 +302,6 @@ func main() {
 			log.Info("Timed out waiting for monitors to stop")
 			closeMonitorsChan <- struct{}{}
 		}
-
 	}()
 
 	go func() {
@@ -312,5 +311,9 @@ func main() {
 	}()
 	<-closeMonitorsChan
 	log.Info("Monitors stopped")
+	err = webApp.Shutdown(context.Background())
+	if err != nil {
+		log.Error(err, "Failed to gracefully shutdown web server")
+	}
 	log.Info("Exiting.")
 }
