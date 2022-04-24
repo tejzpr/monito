@@ -149,8 +149,9 @@ type Logger interface {
 }
 
 var (
-	monitorMu sync.RWMutex
-	monitors  = make(map[string]func(configBody []byte, notifyHandler NotificationHandler, logger Logger, metricsEnabled bool) (Monitor, error))
+	monitorMu           sync.RWMutex
+	monitors            = make(map[string]func(configBody []byte, notifyHandler NotificationHandler, logger Logger, metricsEnabled bool) (Monitor, error))
+	initializedMonitors = make(map[string]Monitor)
 )
 
 // RegisterMonitor registers a monitor
@@ -170,7 +171,16 @@ func GetMonitor(name string, configBody []byte, notifyHandler NotificationHandle
 	monitorMu.RLock()
 	defer monitorMu.RUnlock()
 	if initFunc, ok := monitors[name]; ok {
-		return initFunc(configBody, notifyHandler, logger, metricsEnabled)
+		m, err := initFunc(configBody, notifyHandler, logger, metricsEnabled)
+		if err != nil {
+			return nil, err
+		}
+		if initializedMonitors[m.Name().String()] != nil {
+			m = initializedMonitors[m.Name().String()]
+		} else {
+			initializedMonitors[m.Name().String()] = m
+		}
+		return m, nil
 	}
 	return nil, fmt.Errorf("monitor is not registered: %s", name)
 }

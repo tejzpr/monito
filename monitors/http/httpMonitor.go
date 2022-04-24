@@ -159,10 +159,12 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 				m.logger.Debugf("Stopping monitor %s", m.name)
 				return
 			case <-time.After(m.interval):
+				m.logger.Debugf("Aquire semaphore %s", m.name)
 				if err := m.sem.Acquire(ctx, 1); err != nil {
 					m.logger.Error(err)
 					continue
 				}
+
 				m.logger.Debugf("Running monitor: %s", m.name)
 				err := m.run()
 				if err != nil {
@@ -178,6 +180,7 @@ func (m *HTTPMonitor) Run(ctx context.Context) error {
 					} else if m.maxRetries > 0 && m.retryCounter >= m.maxRetries {
 						m.logger.Infof("Max retries reached for monitor: %s", m.name)
 						returnerr = err
+						// TODO Handle retries
 						return
 					} else {
 						continue
@@ -353,6 +356,7 @@ func (m *HTTPMonitor) SetTimeOut(timeOut time.Duration) {
 
 // SetMaxConcurrentRequests sets the max concurrent requests for the monitor
 func (m *HTTPMonitor) SetMaxConcurrentRequests(maxConcurrentRequests int) {
+	m.maxConcurrentRequests = maxConcurrentRequests
 	m.sem = semaphore.NewWeighted(int64(m.maxConcurrentRequests))
 }
 

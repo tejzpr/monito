@@ -149,7 +149,13 @@ func main() {
 					log.Info("Stopped monitor: ", monitor.Name().String())
 					monitorWG.Done()
 				}()
-				return monitor.Run(context.Background())
+				log.Info("Running monitor: ", monitor.Name().String())
+				err := monitor.Run(context.Background())
+				if err != nil {
+					log.Errorf(err, "Failed to run monitor: %s", monitor.Name())
+					return err
+				}
+				return nil
 			}()
 			configuredMonitors[monitor.Name().String()] = monitor
 		}

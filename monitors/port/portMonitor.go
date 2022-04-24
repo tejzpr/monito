@@ -170,6 +170,7 @@ func (m *PortMonitor) Run(ctx context.Context) error {
 				m.logger.Debugf("Stopping monitor %s", m.name)
 				return
 			case <-time.After(m.interval):
+				m.logger.Debugf("Aquire semaphore %s", m.name)
 				if err := m.sem.Acquire(ctx, 1); err != nil {
 					m.logger.Error(err)
 					continue
@@ -340,6 +341,7 @@ func (m *PortMonitor) SetTimeOut(timeOut time.Duration) {
 
 // SetMaxConcurrentRequests sets the max concurrent requests for the monitor
 func (m *PortMonitor) SetMaxConcurrentRequests(maxConcurrentRequests int) {
+	m.maxConcurrentRequests = maxConcurrentRequests
 	m.sem = semaphore.NewWeighted(int64(m.maxConcurrentRequests))
 }
 
