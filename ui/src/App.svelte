@@ -77,7 +77,7 @@
 							</div>
 						</div>
 						<div class="d-flex loading justify-content-center">
-							Loading
+							Initializing, please wait...
 						</div>	
 					</div>
 				</div>
