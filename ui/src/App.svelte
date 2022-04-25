@@ -86,7 +86,7 @@
 	{/if}
 	{#if loading == false}
 		<div class="content">
-			<div class="container-fluid body-main">
+			<div class="container body-main">
 				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio1" value="all" on:change={onChange} checked={selected==='all'}>
 					<label class="form-check-label" for="inlineRadio1">View All Monitors</label>
