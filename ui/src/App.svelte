@@ -82,7 +82,7 @@
 								<div class="fw-bold">{monitor.name}</div>
 								{monitor.description}
 							</div>
-							<span class="badge monitor bg-success rounded-pill">OK</span>
+							<span class="badge monitor bg-success rounded-pill"></span>
 						</li>
 					{:else if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
 						<li class="list-group-item d-flex justify-content-between align-items-start">
@@ -90,7 +90,7 @@
 								<div class="fw-bold">{monitor.name}</div>
 								{monitor.description}
 							</div>
-							<span class="badge monitor bg-danger rounded-pill">ERROR</span>
+							<span class="badge monitor bg-danger rounded-pill"></span>
 						</li>
 
 					{/if}
@@ -104,7 +104,7 @@
 
 <style>
 	.badge.monitor {
-		width: 10em;
+		width: 4em;
 		height: 4em;
 		color: #fff;
 		display: inline-flex;
