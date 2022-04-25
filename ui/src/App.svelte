@@ -34,7 +34,7 @@
 
 		setInterval(() => {
 	        store.sendMessage("all");
-		}, 1000)
+		}, 5000)
 		
 
 		try {
