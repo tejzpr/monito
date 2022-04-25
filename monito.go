@@ -244,10 +244,12 @@ func main() {
 
 			monitorList := make([]*monitorDetail, 0)
 			for _, monitor := range configuredMonitors {
-				monitorList = append(monitorList, &monitorDetail{
-					Name:        monitor.Name().String(),
-					Description: monitor.Description(),
-				})
+				if monitor.Enabled() {
+					monitorList = append(monitorList, &monitorDetail{
+						Name:        monitor.Name().String(),
+						Description: monitor.Description(),
+					})
+				}
 			}
 			monitors["monitors"] = monitorList
 			return c.JSON(http.StatusOK, monitors)
@@ -270,16 +272,20 @@ func main() {
 				monitorsStatus := make(map[string]interface{})
 				if len(key) > 0 && strings.ToLower(string(key)) == "all" {
 					for monitorName, monitor := range configuredMonitors {
-						monitorsStatus[monitorName] = &monitorStatus{
-							Status:    monitor.GetState().Current,
-							TimeStamp: monitor.GetState().StateChangeTime,
+						if monitor.Enabled() {
+							monitorsStatus[monitorName] = &monitorStatus{
+								Status:    monitor.GetState().Current,
+								TimeStamp: monitor.GetState().StateChangeTime,
+							}
 						}
 					}
 				} else if len(key) > 0 {
 					mon := configuredMonitors[string(key)]
-					monitorsStatus[mon.Name().String()] = &monitorStatus{
-						Status:    mon.GetState().Current,
-						TimeStamp: mon.GetState().StateChangeTime,
+					if mon != nil && mon.Enabled() {
+						monitorsStatus[mon.Name().String()] = &monitorStatus{
+							Status:    mon.GetState().Current,
+							TimeStamp: mon.GetState().StateChangeTime,
+						}
 					}
 				}
 				b, err := json.Marshal(monitorsStatus)
