@@ -1,13 +1,15 @@
 {
     "logLevel": "info",
     "metrics": {
+        "enableGzip": true,
+        "cors": "*",
         "prometheus":{
             "enable":true,
-            "enableGoCollector":false
+            "enableGoCollector":true
         },
         "monitostatus": {
             "enable": true,
-            "cors": "*"
+            "ui": true
         },
         "pprof": {
             "enable": false

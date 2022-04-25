@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"io/fs"
 	"net/http"
 
 	"os"
@@ -23,6 +26,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/tejzpr/monito/log"
 	"github.com/tejzpr/monito/utils/pprof"
+	"github.com/tejzpr/monito/utils/templates"
 	"github.com/ziflex/lecho/v3"
 
 	// Initialize the monitors
@@ -37,7 +41,12 @@ import (
 	// Utils
 )
 
+//go:embed public
+var public embed.FS
+
 func main() {
+	isLive := len(os.Args) > 1 && os.Args[1] == "live"
+
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
@@ -164,6 +173,15 @@ func main() {
 
 	webApp := echo.New()
 	webApp.HideBanner = true
+
+	webTemplates := &templates.Template{}
+	if isLive {
+		webTemplates.SetTemplates(template.Must(template.ParseGlob("public/views/*.html")))
+	} else {
+		webTemplates.SetTemplates(template.Must(template.ParseFS(public, "public/views/*.html")))
+	}
+	webApp.Renderer = webTemplates
+
 	webApp.Use(middleware.Recover())
 	lechoLogger := lecho.From(log.ZLogger())
 	webApp.Logger = lechoLogger
@@ -172,17 +190,23 @@ func main() {
 		Logger: lechoLogger,
 	}))
 
-	if len(viper.GetString("cors")) > 0 {
+	if len(viper.GetString("metrics.cors")) > 0 {
 		webApp.Use(middleware.CORS())
 	}
 
-	if viper.GetBool("enableGzip") {
+	if viper.GetBool("metrics.enableGzip") {
 		webApp.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 			Skipper: func(c echo.Context) bool {
 				if c.Request().Header.Get("x-no-compression") != "" {
 					return true
 				}
-				if strings.HasPrefix(c.Path(), "/api/ws") {
+				if strings.HasSuffix(c.Path(), "/ws") {
+					return true
+				}
+				if strings.HasPrefix(c.Path(), "/metrics") {
+					return true
+				}
+				if strings.HasPrefix(c.Path(), "/debug") {
 					return true
 				}
 				return false
@@ -271,6 +295,15 @@ func main() {
 			}
 
 		})
+		if viper.GetBool("metrics.monitostatus.ui") {
+			assetHandler := http.FileServer(getFileSystem(isLive))
+			root.GET("/static/*", echo.WrapHandler(http.StripPrefix("/static/", assetHandler)))
+			root.GET("/", func(c echo.Context) error {
+				return c.Render(http.StatusOK, "index.html", map[string]interface{}{
+					"name": "Dolly!",
+				})
+			})
+		}
 		log.Info("Monitostatus Websocket enabled on /api/monitors/ws")
 	}
 	if isMetricsEnabled {
@@ -316,4 +349,18 @@ func main() {
 		log.Error(err, "Failed to gracefully shutdown web server")
 	}
 	log.Info("Exiting.")
+}
+
+func getFileSystem(useOS bool) http.FileSystem {
+	if useOS {
+		log.Info("using live mode")
+		return http.FS(os.DirFS("public/static"))
+	}
+
+	fsys, err := fs.Sub(public, "public/static")
+	if err != nil {
+		panic(err)
+	}
+
+	return http.FS(fsys)
 }
