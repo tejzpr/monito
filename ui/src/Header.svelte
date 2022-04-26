@@ -14,7 +14,7 @@
     <div class="container-fluid">
         <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
         <a href="/" class="d-flex align-items-center mb-2 mb-lg-0 text-white text-decoration-none">
-            <img src="/static/images/logo.png" width="40" height="32" alt="Monito" title="Monito"/> 
+            <img src="/static/images/logo.png" class="logo" width="40" height="32" alt="Monito" title="Monito"/> 
             <span class="logo-text">Monito</span>
         </a>
         {#if status === true}
