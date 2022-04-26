@@ -93,7 +93,7 @@
 				</div>
 				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="ok" on:change={onChange} checked={selected==='ok'}>
-					<label class="form-check-label" for="inlineRadio2">View Monitors that have status <span class="badge bg-success rounded-pill">OK</span> </label>
+					<label class="form-check-label" for="inlineRadio2">View Monitors that have status <span class="badge bg-success rounded-pill">UP</span> </label>
 				</div>
 				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="error" on:change={onChange} checked={selected==='error'}>
