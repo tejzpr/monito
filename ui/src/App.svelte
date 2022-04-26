@@ -162,4 +162,7 @@
 		border-top-width: 0px;
 		margin-top: 20px;
 	}
+	.form-check-label, .form-check-input {
+		cursor: pointer;
+	}
 </style>
