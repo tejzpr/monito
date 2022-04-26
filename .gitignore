@@ -1,2 +1,3 @@
 config/config.json
 .DS_store
+dist

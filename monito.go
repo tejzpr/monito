@@ -306,7 +306,9 @@ func main() {
 			root.GET("/static/*", echo.WrapHandler(http.StripPrefix("/static/", assetHandler)))
 			root.GET("/", func(c echo.Context) error {
 				return c.Render(http.StatusOK, "index.html", map[string]interface{}{
-					"name": "Dolly!",
+					"orgName":    viper.GetString("orgName"),
+					"orgLogoURI": viper.GetString("orgLogoURI"),
+					"orgURI":     viper.GetString("orgURI"),
 				})
 			})
 		}

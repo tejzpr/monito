@@ -1,5 +1,6 @@
 <script>
 	import Header from './Header.svelte';
+	import Org from './Org.svelte';
 	import axios from "axios";
 	import { onMount } from 'svelte';
 	import store from './store.js';
@@ -61,6 +62,7 @@
 
 <main>
 	<Header/>
+	<Org/>
 	{#if notifyerror != null}
 	<div class="alert alert-danger" role="alert">
 		{notifyerror}

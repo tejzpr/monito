@@ -1,5 +1,11 @@
 import { writable } from 'svelte/store';
+import { onMount } from 'svelte';
 
+const orgStore = writable({
+    orgName: orgName,
+    orgLogoURI: orgLogoURI,
+    orgURI: orgURI,
+});
 const messageStore = writable('');
 const wsStatus = writable('');
 var loc = window.location, new_uri;
@@ -34,5 +40,6 @@ const sendMessage = (message) => {
 export default {
 	subscribe: messageStore.subscribe,
     subscribeWSStatus: wsStatus.subscribe,
+    subscribeOrg: orgStore.subscribe,
 	sendMessage
 }

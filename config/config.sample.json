@@ -1,4 +1,7 @@
 {
+    "orgName": "",
+    "orgURI": "",
+    "orgLogoURI": "",
     "logLevel": "info",
     "metrics": {
         "enableGzip": true,
