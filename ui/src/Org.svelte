@@ -34,10 +34,10 @@
     }
     .org .orglogo-text{
         color: #000000;
-        font-size: 2em;
+        font-size: 1.75em;
         margin-left: 15px;
     }
     .org .orglogo {
-        height: 2em;
+        height: 1.75em;
     }
 </style>
