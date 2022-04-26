@@ -51,6 +51,9 @@
 			const response = await axios.get(`${API_URL}monitors`);
 			if (typeof response.data["monitors"] !== undefined) {
 				monitors = response.data["monitors"];
+				if (monitors.length > 0) {
+					monitors.sort((a, b) => {return (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0);})
+				}
 			}
 		} catch (error) {
 			postError(error);

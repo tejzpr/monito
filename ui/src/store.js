@@ -1,5 +1,4 @@
 import { writable } from 'svelte/store';
-import { onMount } from 'svelte';
 
 const orgStore = writable({
     orgName: orgName,
