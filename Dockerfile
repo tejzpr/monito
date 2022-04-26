@@ -9,6 +9,7 @@ RUN echo "Starting Build" && \
     mkdir -p /dist/app/config && mkdir -p /dist/etc/ssl/certs/ && \
     mv /etc/ssl/certs/ca-certificates.crt /dist/etc/ssl/certs/ && \
     mv /app/monito /dist/app/monito && \
+    mv /app/LICENSE /dist/app/LICENSE && \
     mv /app/config/config.sample.json /dist/app/config/config.json && \
     echo "Completed Build" 
 
