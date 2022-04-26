@@ -89,19 +89,25 @@
 			<div class="container body-main">
 				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio1" value="all" on:change={onChange} checked={selected==='all'}>
-					<label class="form-check-label" for="inlineRadio1">View All Monitors</label>
+					<label class="form-check-label" for="inlineRadio1">View All Services</label>
 				</div>
 				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="ok" on:change={onChange} checked={selected==='ok'}>
-					<label class="form-check-label" for="inlineRadio2">View Monitors that have status <span class="badge bg-success rounded-pill">UP</span> </label>
+					<label class="form-check-label" for="inlineRadio2">View Services that have status <span class="badge bg-success rounded-pill">UP</span> </label>
 				</div>
 				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="error" on:change={onChange} checked={selected==='error'}>
-					<label class="form-check-label" for="inlineRadio3">View Monitors that have status <span class="badge bg-danger rounded-pill">DOWN</span></label>
+					<label class="form-check-label" for="inlineRadio3">View Services that have status <span class="badge bg-danger rounded-pill">DOWN</span></label>
 				</div>
 			</div>
 			<div class="container body-main">
-				<ol class="list-group list-group-numbered">
+				<ol class="list-group">
+							<li class="list-group-item d-flex justify-content-between align-items-start header">
+								<div class="ms-2 me-auto">
+									<div class="fw-bold">Services</div>
+								</div>
+								<span class="fw-bold">Status</span>
+							</li>
 					{#each monitors as monitor}
 					
 						{#if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "OK") && (selected === 'ok' || selected === 'all')}
@@ -145,5 +151,13 @@
 	}
 	.body-main {
 		margin-top:20px;
+	}
+	.list-group li {
+		border-left-width: 0px;
+		border-right-width: 0px;
+	}
+	.list-group .header {
+		border-top-width: 0px;
+		margin-top: 20px;
 	}
 </style>

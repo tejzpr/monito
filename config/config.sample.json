@@ -42,7 +42,7 @@
                     "Authorization": "Basic TEST"
                 },
                 "method": "GET",
-                "interval": "2s",
+                "interval": "10s",
                 "timeout": "10s",
                 "maxConcurrentRequests": 1,
                 "maxRetries": -1, 
@@ -67,7 +67,7 @@
                 "host": "localhost",
                 "port": 4000,
                 "protocol": "tcp",
-                "interval": "2s",
+                "interval": "10s",
                 "timeout": "10s",
                 "maxConcurrentRequests": 1,
                 "maxRetries": -1, 
