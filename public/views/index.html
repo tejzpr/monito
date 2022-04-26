@@ -21,7 +21,7 @@
     <link rel='stylesheet' href='/static/global.css'>
     <link rel='stylesheet' href='/static/build/bundle.css'>
     <script defer src='/static/build/bundle.js'></script>
-    <title>Monito</title>
+    <title>Monito {{if .orgName}}- {{.orgName}}{{end}}</title>
     <script>
         var orgName = "{{.orgName}}";
         var orgLogoURI = "{{.orgLogoURI}}";
