@@ -97,7 +97,7 @@
 				</div>
 				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="error" on:change={onChange} checked={selected==='error'}>
-					<label class="form-check-label" for="inlineRadio3">View Monitors that have status <span class="badge bg-danger rounded-pill">ERROR</span></label>
+					<label class="form-check-label" for="inlineRadio3">View Monitors that have status <span class="badge bg-danger rounded-pill">DOWN</span></label>
 				</div>
 			</div>
 			<div class="container body-main">
@@ -110,7 +110,7 @@
 									<div class="fw-bold">{monitor.name}</div>
 									{monitor.description}
 								</div>
-								<span class="badge monitor bg-success rounded-pill"></span>
+								<span class="badge monitor bg-success rounded-pill">UP</span>
 							</li>
 						{:else if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
@@ -118,7 +118,7 @@
 									<div class="fw-bold">{monitor.name}</div>
 									{monitor.description}
 								</div>
-								<span class="badge monitor bg-danger rounded-pill"></span>
+								<span class="badge monitor bg-danger rounded-pill">DOWN</span>
 							</li>
 
 						{/if}
