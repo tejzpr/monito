@@ -258,6 +258,22 @@ func main() {
 			monitors["monitors"] = monitorList
 			return c.JSON(http.StatusOK, monitors)
 		})
+		root.GET("/api/monitors/status", func(c echo.Context) error {
+			monitors := make(map[string][]*monitorStatus)
+
+			monitorList := make([]*monitorStatus, 0)
+			for _, monitor := range configuredMonitors {
+				if monitor.Enabled() {
+					monitorList = append(monitorList, &monitorStatus{
+						Status:    monitor.GetState().GetCurrent(),
+						TimeStamp: monitor.GetState().GetStateChangeTime(),
+						Group:     monitor.Group(),
+					})
+				}
+			}
+			monitors["monitors"] = monitorList
+			return c.JSON(http.StatusOK, monitors)
+		})
 		root.GET("/api/monitors/ws", func(c echo.Context) error {
 			conn, _, _, err := ws.UpgradeHTTP(c.Request(), c.Response())
 			if err != nil {
