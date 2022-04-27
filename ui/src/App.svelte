@@ -6,7 +6,7 @@
 	import { onMount } from 'svelte';
 	import store from './store.js';
 	
-	$: monitorData = {};
+	$: monitorData = new Map();
 	$: notifyerror = null;
 	const API_URL = "/api/";
 	let monitors = [];
@@ -26,27 +26,35 @@
 		selected = event.currentTarget.value;
 	}
 
+	function isIterable(obj) {
+		if (obj == null) {
+			return false;
+		}
+		return typeof obj[Symbol.iterator] === 'function';
+	}
+
 
 	onMount(async () => {
 
 		store.subscribe(currentMessage => {
-			if (currentMessage.length > 0) {
-				if (loading == true) {
-					loading = false;
-				}
+			if (loading == true) {
+				loading = false;
+			}
+			if (currentMessage.size > 0) {
 				try {
-					monitorData = JSON.parse(currentMessage);
+					for (let [key, value] of currentMessage) {
+						monitorData[key] = value;
+					}
 				} catch (err) {
 					postError(err);
 				}
-				
 			}
 		})
-
-		setInterval(() => {
-	        store.sendMessage("all");
-		}, 5000)
-		
+		store.subscribeMessageSocketStatus(status => {
+			if (status === true) {
+				store.sendMessage("all");
+			}
+		})
 
 		try {
 			const response = await axios.get(`${API_URL}monitors`);
@@ -55,11 +63,13 @@
 				if (monitors.length > 0) {
 					monitors = monitors.map(monitor => {
 						if (monitor.group !== "") {
-							monitor.name = monitor.group + " - " + monitor.name;
+							monitor.wGroup = monitor.group + " - " + monitor.name;
+						} else {
+							monitor.wGroup = monitor.name;
 						}
 						return monitor;
 					});
-					monitors.sort((a, b) => {return (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0);})
+					monitors.sort((a, b) => {return (a.wGroup > b.wGroup) ? 1 : ((b.wGroup > a.wGroup) ? -1 : 0);})
 				}
 			}
 		} catch (error) {
@@ -125,7 +135,7 @@
 						{#if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "OK") && (selected === 'ok' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
 								<div class="ms-2 me-auto">
-									<div class="fw-bold">{monitor.name}</div>
+									<div class="fw-bold">{monitor.name}<span class="badge bg-info rounded-pill group-pill" title="Group - {monitor.group}">{monitor.group}</span></div>
 									{monitor.description}
 								</div>
 								<span class="badge monitor bg-success rounded-pill" title="Status changed to UP {typeof monitorData[monitor.name]!== 'undefined'?moment(monitorData[monitor.name]["timestamp"]).fromNow() : ""}">UP</span>
@@ -133,7 +143,7 @@
 						{:else if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
 								<div class="ms-2 me-auto">
-									<div class="fw-bold">{monitor.name}</div>
+									<div class="fw-bold">{monitor.name}<span class="badge bg-info rounded-pill group-pill" title="Group - {monitor.group}">{monitor.group}</span></div>
 									{monitor.description}
 								</div>
 								<span class="badge monitor bg-danger rounded-pill" title="Status changed to DOWN {typeof monitorData[monitor.name] !== 'undefined'?moment(monitorData[monitor.name]["timestamp"]).fromNow() : ""}">DOWN</span>
@@ -148,6 +158,9 @@
 
 
 <style>
+	.group-pill {
+		margin-left:10px;
+	}
 	.badge.monitor {
 		width: 4em;
 		height: 4em;

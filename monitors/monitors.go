@@ -149,14 +149,69 @@ const (
 
 // State is the state of the monitor
 type State struct {
-	Previous        StateStatus `json:"-"`
-	Current         StateStatus `json:"status"`
-	StateChangeTime time.Time   `json:"timestamp"`
+	previous        StateStatus
+	current         StateStatus
+	stateChangeTime time.Time
+	sMutex          sync.Mutex
+	stateChan       chan *State
+	subscribers     map[string]func(*State)
+	initialized     bool
+}
+
+// Init initializes the state
+func (s *State) Init(current StateStatus, previous StateStatus, stateCHangeTime time.Time) {
+	s.previous = previous
+	s.current = current
+	s.stateChangeTime = stateCHangeTime
+	s.stateChan = make(chan *State, 1)
+	s.subscribers = make(map[string]func(*State))
+	go func() {
+		for {
+			select {
+			case state := <-s.stateChan:
+				s.sMutex.Lock()
+				for _, subscriber := range s.subscribers {
+					subscriber(state)
+				}
+				s.sMutex.Unlock()
+			}
+		}
+	}()
 }
 
 // Get returns the current state of the monitor
 func (s *State) Get() *State {
 	return s
+}
+
+// SetPrevious sets the previous state
+func (s *State) SetPrevious(previous StateStatus) {
+	s.previous = previous
+}
+
+// GetPrevious returns the previous state
+func (s *State) GetPrevious() StateStatus {
+	return s.previous
+}
+
+// SetCurrent sets the current state
+func (s *State) SetCurrent(current StateStatus) {
+	s.current = current
+}
+
+// GetCurrent returns the current state
+func (s *State) GetCurrent() StateStatus {
+	return s.current
+}
+
+// SetStateChangeTime sets the state change time
+func (s *State) SetStateChangeTime(stateChangeTime time.Time) {
+	s.stateChangeTime = stateChangeTime
+}
+
+// GetStateChangeTime returns the state change time
+func (s *State) GetStateChangeTime() time.Time {
+	return s.stateChangeTime
 }
 
 // Update updates the state of the monitor
@@ -167,10 +222,27 @@ func (s *State) Update(newState StateStatus) error {
 		newState != StateStatusInit {
 		return fmt.Errorf("Invalid state: %s", newState)
 	}
-	s.Previous = s.Current
-	s.Current = newState
-	s.StateChangeTime = time.Now()
+	s.SetPrevious(s.GetCurrent())
+	s.SetCurrent(newState)
+	s.SetStateChangeTime(time.Now())
+	s.stateChan <- s
 	return nil
+}
+
+// UnSubscribe unsubscribes the subscriber
+func (s *State) UnSubscribe(id string) {
+	s.sMutex.Lock()
+	defer s.sMutex.Unlock()
+	delete(s.subscribers, id)
+	log.Debug("Unsubscribed from state updates for: ", id)
+}
+
+// Subscribe subscribes to state updates
+func (s *State) Subscribe(id string, subscriber func(s *State)) {
+	s.sMutex.Lock()
+	defer s.sMutex.Unlock()
+	s.subscribers[id] = subscriber
+	log.Debug("Subscribed to state updates: ", id)
 }
 
 // Logger is the interface of the logger for the monitor

@@ -119,11 +119,9 @@ func (m *Monitor) Run(ctx context.Context) error {
 		}
 
 		if m.state == nil {
-			m.state = &monitors.State{
-				Current:         monitors.StateStatusOK,
-				Previous:        monitors.StateStatusInit,
-				StateChangeTime: time.Now(),
-			}
+			state := &monitors.State{}
+			state.Init(monitors.StateStatusOK, monitors.StateStatusInit, time.Now())
+			m.state = state
 		}
 		m.stopChannel = make(chan bool)
 		if m.sem == nil {
@@ -161,7 +159,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 				m.logger.Debugf("Running monitor: %s", m.name)
 				err := m.run()
 				if err != nil {
-					if m.state.Get().Current == monitors.StateStatusOK {
+					if m.state.GetCurrent() == monitors.StateStatusOK {
 						m.metrics.ServiceDown()
 						m.state.Update(monitors.StateStatusError)
 					}
@@ -179,7 +177,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 						continue
 					}
 				} else {
-					if m.state.Current == monitors.StateStatusError {
+					if m.state.GetCurrent() == monitors.StateStatusError {
 						m.metrics.ServiceUp()
 						m.state.Update(monitors.StateStatusOK)
 						m.notifyHandler(m, nil)
@@ -210,7 +208,7 @@ func (m *Monitor) SetNotifyHandler(notifyHandler monitors.NotificationHandler) {
 // HandleFailure handles a failure
 func (m *Monitor) HandleFailure(err error) error {
 	m.logger.Debugf("Monitor failed with error %s", err.Error())
-	if m.state.Get().Current == monitors.StateStatusOK {
+	if m.state.GetCurrent() == monitors.StateStatusOK {
 		m.metrics.ServiceDown()
 		m.state.Update(monitors.StateStatusError)
 	}
@@ -410,10 +408,10 @@ func (m *Monitor) GetRecoveryNotificationBody() string {
 	loc, _ := time.LoadLocation("UTC")
 	return fmt.Sprintf("Recovered in monitor [%s]: %s \nType: %s\nRecovered URL: %s\nRecovered On: %s",
 		m.Name(),
-		m.state.Current,
+		m.state.GetCurrent(),
 		m.Type().String(),
 		m.config.URL,
-		m.state.StateChangeTime.In(loc).Format(time.RFC1123))
+		m.state.GetStateChangeTime().In(loc).Format(time.RFC1123))
 }
 
 // GetErrorNotificationBody returns the error notification body

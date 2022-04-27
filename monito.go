@@ -20,6 +20,7 @@ import (
 	"github.com/gobwas/ws/wsutil"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/random"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -263,48 +264,96 @@ func main() {
 				log.Error(err, "WS: Failed to upgrade websocket connection")
 				return err
 			}
+			rid := random.String(32)
 
-			defer conn.Close()
+			defer func() {
+				log.Debug("WS: CLEANUP connection: ", rid)
+				conn.Close()
+			}()
 
-			for {
-				key, op, err := wsutil.ReadClientData(conn)
-				if err != nil {
-					log.Error(err, "WS: Failed to read client data")
-					return err
+			var wg sync.WaitGroup
+			wg.Add(1)
+			stop := func() {
+				for _, monitor := range configuredMonitors {
+					monitor.GetState().UnSubscribe(rid)
 				}
-				monitorsStatus := make(map[string]interface{})
-				if len(key) > 0 && strings.ToLower(string(key)) == "all" {
-					for monitorName, monitor := range configuredMonitors {
-						if monitor.Enabled() {
-							monitorsStatus[monitorName] = &monitorStatus{
-								Status:    monitor.GetState().Current,
-								TimeStamp: monitor.GetState().StateChangeTime,
-								Group:     monitor.Group(),
-							}
-						}
-					}
-				} else if len(key) > 0 {
-					mon := configuredMonitors[string(key)]
-					if mon != nil && mon.Enabled() {
-						monitorsStatus[mon.Name().String()] = &monitorStatus{
-							Status:    mon.GetState().Current,
-							TimeStamp: mon.GetState().StateChangeTime,
-							Group:     mon.Group(),
-						}
-					}
-				}
-				b, err := json.Marshal(monitorsStatus)
-				if err != nil {
-					log.Error(err, "WS: Failed to marshal monitor status")
-					return err
-				}
-				err = wsutil.WriteServerMessage(conn, op, b)
-				if err != nil {
-					log.Error(err, "WS: Failed to write server message")
-					return err
-				}
+				wg.Done()
 			}
 
+			key, op, err := wsutil.ReadClientData(conn)
+			if err != nil {
+				log.Error(err, "WS: Failed to read client data")
+				stop()
+				return err
+			}
+
+			monitorsStatus := make(map[string]interface{})
+			if len(key) > 0 && strings.ToLower(string(key)) == "all" {
+				for monitorName, monitor := range configuredMonitors {
+					if monitor.Enabled() {
+						monitorsStatus[monitorName] = &monitorStatus{
+							Status:    monitor.GetState().GetCurrent(),
+							TimeStamp: monitor.GetState().GetStateChangeTime(),
+							Group:     monitor.Group(),
+						}
+					}
+				}
+			} else {
+				wg.Done()
+				return nil
+			}
+
+			b, err := json.Marshal(monitorsStatus)
+			if err != nil {
+				log.Error(err, "WS: Failed to marshal monitor status")
+				return err
+			}
+			err = wsutil.WriteServerMessage(conn, op, b)
+			if err != nil {
+				log.Error(err, "WS: Failed to write server message")
+				stop()
+				return err
+			}
+
+			go func() {
+				for {
+					_, _, err := wsutil.ReadClientData(conn)
+					if err != nil {
+						stop()
+						return
+					}
+				}
+			}()
+
+			go func() {
+				for monitorName, monitor := range configuredMonitors {
+					func(monitorName string, monitor monitors.Monitor) {
+						monitor.GetState().Subscribe(rid, func(state *monitors.State) {
+							if monitor.Enabled() {
+								singleMonitorStatus := make(map[string]interface{})
+								singleMonitorStatus[monitor.Name().String()] = &monitorStatus{
+									Status:    state.GetCurrent(),
+									TimeStamp: state.GetStateChangeTime(),
+									Group:     monitor.Group(),
+								}
+								b, err := json.Marshal(singleMonitorStatus)
+								if err != nil {
+									log.Error(err, "WS: Failed to marshal monitor status")
+									return
+								}
+								err = wsutil.WriteServerMessage(conn, op, b)
+								if err != nil {
+									log.Error(err, "WS: Failed to write server message")
+									return
+								}
+							}
+						})
+					}(monitorName, monitor)
+				}
+			}()
+			wg.Wait()
+			log.Debug("WS: Connection closed: ", rid)
+			return nil
 		})
 		if viper.GetBool("metrics.monitostatus.ui") {
 			assetHandler := http.FileServer(getFileSystem(isLive))
