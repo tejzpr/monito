@@ -53,6 +53,12 @@
 			if (typeof response.data["monitors"] !== undefined) {
 				monitors = response.data["monitors"];
 				if (monitors.length > 0) {
+					monitors = monitors.map(monitor => {
+						if (monitor.group !== "") {
+							monitor.name = monitor.group + " - " + monitor.name;
+						}
+						return monitor;
+					});
 					monitors.sort((a, b) => {return (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0);})
 				}
 			}
@@ -122,7 +128,7 @@
 									<div class="fw-bold">{monitor.name}</div>
 									{monitor.description}
 								</div>
-								<span class="badge monitor bg-success rounded-pill" title="Status changed to UP {moment(monitorData[monitor.name]["timestamp"]).fromNow()}">UP</span>
+								<span class="badge monitor bg-success rounded-pill" title="Status changed to UP {typeof monitorData[monitor.name]!== 'undefined'?moment(monitorData[monitor.name]["timestamp"]).fromNow() : ""}">UP</span>
 							</li>
 						{:else if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
@@ -130,7 +136,7 @@
 									<div class="fw-bold">{monitor.name}</div>
 									{monitor.description}
 								</div>
-								<span class="badge monitor bg-danger rounded-pill" title="Status changed to DOWN {moment(monitorData[monitor.name]["timestamp"]).fromNow()}">DOWN</span>
+								<span class="badge monitor bg-danger rounded-pill" title="Status changed to DOWN {typeof monitorData[monitor.name] !== 'undefined'?moment(monitorData[monitor.name]["timestamp"]).fromNow() : ""}">DOWN</span>
 							</li>
 						{/if}
 					{/each}

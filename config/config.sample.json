@@ -37,6 +37,7 @@
             {
                 "name": "LOCALHOST_8080",
                 "description": "A monitor for Localhost 8080",
+                "group": "LOCALHOST",
                 "enabled": true,
                 "url": "http://localhost:8080/ping",
                 "expectedStatusCode": 200,

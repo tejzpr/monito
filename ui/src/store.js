@@ -27,6 +27,7 @@ socket.addEventListener('close', function (event) {
 });
 
 socket.addEventListener('message', function (event) {
+    
     messageStore.set(event.data);
 });
 
