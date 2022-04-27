@@ -234,10 +234,12 @@ func main() {
 		type monitorDetail struct {
 			Name        string `json:"name"`
 			Description string `json:"description"`
+			Group       string `json:"group"`
 		}
 		type monitorStatus struct {
 			Status    monitors.StateStatus `json:"status"`
 			TimeStamp time.Time            `json:"timestamp"`
+			Group     string               `json:"group"`
 		}
 		root.GET("/api/monitors", func(c echo.Context) error {
 			monitors := make(map[string][]*monitorDetail)
@@ -248,6 +250,7 @@ func main() {
 					monitorList = append(monitorList, &monitorDetail{
 						Name:        monitor.Name().String(),
 						Description: monitor.Description(),
+						Group:       monitor.Group(),
 					})
 				}
 			}
@@ -276,6 +279,7 @@ func main() {
 							monitorsStatus[monitorName] = &monitorStatus{
 								Status:    monitor.GetState().Current,
 								TimeStamp: monitor.GetState().StateChangeTime,
+								Group:     monitor.Group(),
 							}
 						}
 					}
@@ -285,6 +289,7 @@ func main() {
 						monitorsStatus[mon.Name().String()] = &monitorStatus{
 							Status:    mon.GetState().Current,
 							TimeStamp: mon.GetState().StateChangeTime,
+							Group:     mon.Group(),
 						}
 					}
 				}

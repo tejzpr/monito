@@ -35,6 +35,7 @@ type NotificationHandler func(monitor Monitor, err error)
 type JSONBaseConfig struct {
 	Name                  MonitorName    `json:"name"`
 	Description           string         `json:"description"`
+	Group                 string         `json:"group"`
 	Enabled               bool           `json:"enabled"`
 	Interval              utils.Duration `json:"interval"`
 	Timeout               utils.Duration `json:"timeout"`
@@ -85,6 +86,10 @@ type Monitor interface {
 	Name() MonitorName
 	// SetName sets the name of the monitor
 	SetName(name MonitorName)
+	// Group returns the group of the monitor
+	Group() string
+	// SetGroup sets the group of the monitor
+	SetGroup(group string)
 	// Description returns the description of the monitor
 	Description() string
 	// SetDescription sets the description of the monitor

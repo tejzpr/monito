@@ -44,6 +44,7 @@ type Config struct {
 type Monitor struct {
 	name                  monitors.MonitorName
 	description           string
+	group                 string
 	config                *Config
 	logger                monitors.Logger
 	interval              time.Duration
@@ -73,7 +74,10 @@ type Metrics struct {
 }
 
 // StartSericeStatusGauge initializes the service status gauge
-func (hm *Metrics) StartSericeStatusGauge(name string) {
+func (hm *Metrics) StartSericeStatusGauge(name string, group string) {
+	if group != "" {
+		name = fmt.Sprintf("%s_%s", group, name)
+	}
 	hm.ServiceStatusGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "monito",
 		Subsystem: "http_metrics",
@@ -111,7 +115,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 
 		if m.metricsEnabled {
 			m.metrics = &Metrics{}
-			m.metrics.StartSericeStatusGauge(m.name.String())
+			m.metrics.StartSericeStatusGauge(m.name.String(), m.group)
 		}
 
 		if m.state == nil {
@@ -186,6 +190,16 @@ func (m *Monitor) Run(ctx context.Context) error {
 		}
 	})
 	return returnerr
+}
+
+// SetGroup sets the group for the monitor
+func (m *Monitor) SetGroup(group string) {
+	m.group = group
+}
+
+// Group returns the group for the monitor
+func (m *Monitor) Group() string {
+	return m.group
 }
 
 // SetNotifyHandler sets the notify handler for the monitor
@@ -472,6 +486,7 @@ func newHTTPMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 		return nil, err
 	}
 	httpMonitor.SetDescription(mConfig.Description)
+	httpMonitor.SetGroup(mConfig.Group)
 	httpMonitor.SetLogger(logger)
 	httpMonitor.SetEnabled(mConfig.Enabled)
 	httpMonitor.SetInterval(mConfig.Interval.Duration)

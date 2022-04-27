@@ -65,7 +65,10 @@ type Metrics struct {
 }
 
 // StartSericeStatusGauge initializes the service status gauge
-func (pm *Metrics) StartSericeStatusGauge(name string) {
+func (pm *Metrics) StartSericeStatusGauge(name string, group string) {
+	if group != "" {
+		name = fmt.Sprintf("%s_%s", group, name)
+	}
 	pm.ServiceStatusGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "monito",
 		Subsystem: "port_metrics",
@@ -90,6 +93,7 @@ func (pm *Metrics) ServiceUp() {
 type Monitor struct {
 	name                  monitors.MonitorName
 	description           string
+	group                 string
 	config                *Config
 	logger                monitors.Logger
 	interval              time.Duration
@@ -143,7 +147,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 
 		if m.metricsEnabled {
 			m.metrics = &Metrics{}
-			m.metrics.StartSericeStatusGauge(m.name.String())
+			m.metrics.StartSericeStatusGauge(m.name.String(), m.group)
 		}
 
 		if m.state == nil {
@@ -210,6 +214,16 @@ func (m *Monitor) Run(ctx context.Context) error {
 // SetNotifyHandler sets the notify handler for the monitor
 func (m *Monitor) SetNotifyHandler(notifyHandler monitors.NotificationHandler) {
 	m.notifyHandler = notifyHandler
+}
+
+// SetGroup sets the group for the monitor
+func (m *Monitor) SetGroup(group string) {
+	m.group = group
+}
+
+// Group returns the group for the monitor
+func (m *Monitor) Group() string {
+	return m.group
 }
 
 // HandleFailure handles a failure
@@ -462,6 +476,7 @@ func newPortMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 		return nil, err
 	}
 	portMonitor.SetDescription(mConfig.Description)
+	portMonitor.SetGroup(mConfig.Group)
 	portMonitor.SetLogger(logger)
 	portMonitor.SetEnabled(mConfig.Enabled)
 	portMonitor.SetInterval(mConfig.Interval.Duration)
