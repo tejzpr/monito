@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "axios": "^0.26.1",
+    "moment": "^2.29.3",
     "sirv-cli": "^2.0.0"
   }
 }

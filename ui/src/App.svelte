@@ -2,9 +2,10 @@
 	import Header from './Header.svelte';
 	import Org from './Org.svelte';
 	import axios from "axios";
+	import moment from "moment";
 	import { onMount } from 'svelte';
 	import store from './store.js';
-
+	
 	$: monitorData = {};
 	$: notifyerror = null;
 	const API_URL = "/api/";
@@ -121,7 +122,7 @@
 									<div class="fw-bold">{monitor.name}</div>
 									{monitor.description}
 								</div>
-								<span class="badge monitor bg-success rounded-pill">UP</span>
+								<span class="badge monitor bg-success rounded-pill" title="Status changed {moment(monitorData[monitor.name]["timestamp"]).fromNow()}">UP</span>
 							</li>
 						{:else if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
@@ -129,11 +130,9 @@
 									<div class="fw-bold">{monitor.name}</div>
 									{monitor.description}
 								</div>
-								<span class="badge monitor bg-danger rounded-pill">DOWN</span>
+								<span class="badge monitor bg-danger rounded-pill" title="Status changed {moment(monitorData[monitor.name]["timestamp"]).fromNow()}">DOWN</span>
 							</li>
-
 						{/if}
-					
 					{/each}
 				</ol>
 			</div>
