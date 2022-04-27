@@ -122,7 +122,7 @@
 									<div class="fw-bold">{monitor.name}</div>
 									{monitor.description}
 								</div>
-								<span class="badge monitor bg-success rounded-pill" title="Status changed {moment(monitorData[monitor.name]["timestamp"]).fromNow()}">UP</span>
+								<span class="badge monitor bg-success rounded-pill" title="Status changed to UP {moment(monitorData[monitor.name]["timestamp"]).fromNow()}">UP</span>
 							</li>
 						{:else if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
@@ -130,7 +130,7 @@
 									<div class="fw-bold">{monitor.name}</div>
 									{monitor.description}
 								</div>
-								<span class="badge monitor bg-danger rounded-pill" title="Status changed {moment(monitorData[monitor.name]["timestamp"]).fromNow()}">DOWN</span>
+								<span class="badge monitor bg-danger rounded-pill" title="Status changed to DOWN {moment(monitorData[monitor.name]["timestamp"]).fromNow()}">DOWN</span>
 							</li>
 						{/if}
 					{/each}
