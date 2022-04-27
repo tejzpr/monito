@@ -120,7 +120,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 
 		if m.state == nil {
 			state := &monitors.State{}
-			state.Init(monitors.StateStatusOK, monitors.StateStatusInit, time.Now())
+			state.Init(monitors.StateStatusInit, monitors.StateStatusStarting, time.Now())
 			m.state = state
 		}
 		m.stopChannel = make(chan bool)
@@ -159,7 +159,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 				m.logger.Debugf("Running monitor: %s", m.name)
 				err := m.run()
 				if err != nil {
-					if m.state.GetCurrent() == monitors.StateStatusOK {
+					if m.state.IsCurrentStatusOK() {
 						m.metrics.ServiceDown()
 						m.state.Update(monitors.StateStatusError)
 					}
@@ -177,7 +177,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 						continue
 					}
 				} else {
-					if m.state.GetCurrent() == monitors.StateStatusError {
+					if m.state.IsCurrentStatusERROR() {
 						m.metrics.ServiceUp()
 						m.state.Update(monitors.StateStatusOK)
 						m.notifyHandler(m, nil)
@@ -208,7 +208,7 @@ func (m *Monitor) SetNotifyHandler(notifyHandler monitors.NotificationHandler) {
 // HandleFailure handles a failure
 func (m *Monitor) HandleFailure(err error) error {
 	m.logger.Debugf("Monitor failed with error %s", err.Error())
-	if m.state.GetCurrent() == monitors.StateStatusOK {
+	if m.state.IsCurrentStatusOK() {
 		m.metrics.ServiceDown()
 		m.state.Update(monitors.StateStatusError)
 	}

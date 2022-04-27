@@ -145,6 +145,8 @@ const (
 	StateStatusError StateStatus = "ERROR"
 	// StateStatusInit indicates that the monitor is in a initializing state
 	StateStatusInit StateStatus = "INIT"
+	// StateStatusStarting indicates that the monitor is in a initializing state
+	StateStatusStarting StateStatus = "STARTING"
 )
 
 // State is the state of the monitor
@@ -204,6 +206,38 @@ func (s *State) GetCurrent() StateStatus {
 	return s.current
 }
 
+// IsCurrentStatusOK returns if the current status ok
+func (s *State) IsCurrentStatusOK() bool {
+	if s.GetCurrent() == StateStatusOK || s.GetCurrent() == StateStatusInit {
+		return true
+	}
+	return false
+}
+
+// IsCurrentStatusERROR returns if the current status error
+func (s *State) IsCurrentStatusERROR() bool {
+	if s.GetCurrent() == StateStatusError || s.GetCurrent() == StateStatusInit {
+		return true
+	}
+	return false
+}
+
+// IsPreviousStatusOK returns if the previous status ok
+func (s *State) IsPreviousStatusOK() bool {
+	if s.GetPrevious() == StateStatusOK || s.GetPrevious() == StateStatusInit {
+		return true
+	}
+	return false
+}
+
+// IsPreviousStatusERROR returns if the previous status error
+func (s *State) IsPreviousStatusERROR() bool {
+	if s.GetPrevious() == StateStatusError || s.GetPrevious() == StateStatusInit {
+		return true
+	}
+	return false
+}
+
 // SetStateChangeTime sets the state change time
 func (s *State) SetStateChangeTime(stateChangeTime time.Time) {
 	s.stateChangeTime = stateChangeTime
@@ -216,6 +250,8 @@ func (s *State) GetStateChangeTime() time.Time {
 
 // Update updates the state of the monitor
 func (s *State) Update(newState StateStatus) error {
+	s.sMutex.Lock()
+	defer s.sMutex.Unlock()
 	// Validate newState
 	if newState != StateStatusOK &&
 		newState != StateStatusError &&

@@ -114,12 +114,16 @@
 					<label class="form-check-label" for="inlineRadio1">View All Services</label>
 				</div>
 				<div class="form-check">
-					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="ok" on:change={onChange} checked={selected==='ok'}>
-					<label class="form-check-label" for="inlineRadio2">View Services that have status <span class="badge bg-success rounded-pill">UP</span> </label>
+					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="init" on:change={onChange} checked={selected==='init'}>
+					<label class="form-check-label" for="inlineRadio2">View Services that have status <span class="badge bg-secondary rounded-pill">INIT</span> </label>
 				</div>
 				<div class="form-check">
-					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="error" on:change={onChange} checked={selected==='error'}>
-					<label class="form-check-label" for="inlineRadio3">View Services that have status <span class="badge bg-danger rounded-pill">DOWN</span></label>
+					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="ok" on:change={onChange} checked={selected==='ok'}>
+					<label class="form-check-label" for="inlineRadio3">View Services that have status <span class="badge bg-success rounded-pill">UP</span> </label>
+				</div>
+				<div class="form-check">
+					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio4" value="error" on:change={onChange} checked={selected==='error'}>
+					<label class="form-check-label" for="inlineRadio4">View Services that have status <span class="badge bg-danger rounded-pill">DOWN</span></label>
 				</div>
 			</div>
 			<div class="container body-main">
@@ -132,7 +136,7 @@
 							</li>
 					{#each monitors as monitor}
 					
-						{#if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "OK") && (selected === 'ok' || selected === 'all')}
+						{#if (typeof monitorData[monitor.name] !== 'undefined' && monitorData[monitor.name]["status"] === "OK") && (selected === 'ok' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
 								<div class="ms-2 me-auto">
 									<div class="fw-bold">{monitor.name}<span class="badge bg-info rounded-pill group-pill" title="Group - {monitor.group}">{monitor.group}</span></div>
@@ -140,13 +144,21 @@
 								</div>
 								<span class="badge monitor bg-success rounded-pill" title="Status changed to UP {typeof monitorData[monitor.name]!== 'undefined'?moment(monitorData[monitor.name]["timestamp"]).fromNow() : ""}">UP</span>
 							</li>
-						{:else if (typeof monitorData[monitor.name] === 'undefined' ? "Loading" : monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
+						{:else if (typeof monitorData[monitor.name] !== 'undefined' && monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
 								<div class="ms-2 me-auto">
 									<div class="fw-bold">{monitor.name}<span class="badge bg-info rounded-pill group-pill" title="Group - {monitor.group}">{monitor.group}</span></div>
 									{monitor.description}
 								</div>
 								<span class="badge monitor bg-danger rounded-pill" title="Status changed to DOWN {typeof monitorData[monitor.name] !== 'undefined'?moment(monitorData[monitor.name]["timestamp"]).fromNow() : ""}">DOWN</span>
+							</li>
+						{:else if (typeof monitorData[monitor.name] !== 'undefined' && monitorData[monitor.name]["status"] === "INIT") && (selected === 'init' || selected === 'all')}
+							<li class="list-group-item d-flex justify-content-between align-items-start">
+								<div class="ms-2 me-auto">
+									<div class="fw-bold">{monitor.name}<span class="badge bg-info rounded-pill group-pill" title="Group - {monitor.group}">{monitor.group}</span></div>
+									{monitor.description}
+								</div>
+								<span class="badge monitor bg-secondary rounded-pill" title="Waiting for status">INIT</span>
 							</li>
 						{/if}
 					{/each}
