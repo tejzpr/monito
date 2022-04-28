@@ -30,6 +30,9 @@
             "port": 25,
             "tls": false,
             "sender": "monito-noreply@test.com"
+        },
+        "webhook": { 
+            "enabled": true
         }
     },
     "monitors": {
@@ -59,6 +62,9 @@
                         "to": [],
                         "cc": [],
                         "bcc": []
+                    },
+                    "webhook": {
+                        "url": ""
                     }
                 }
             }
@@ -84,6 +90,9 @@
                         "to": [],
                         "cc": [],
                         "bcc": []
+                    },
+                    "webhook": {
+                        "url": ""
                     }
                 }
             }

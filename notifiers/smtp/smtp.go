@@ -14,8 +14,10 @@ import (
 	"github.com/tejzpr/monito/notifiers"
 )
 
+var notifierName notifiers.NotifierName = "smtp"
+
 func init() {
-	notifiers.RegisterNotifier("smtp", InitSMTPNotifier)
+	notifiers.RegisterNotifier(notifierName, InitSMTPNotifier)
 }
 
 // SendConfig is the config for the smtp notifier
@@ -111,7 +113,7 @@ func (s *Notifier) serverName() string {
 
 // GetName returns the name of the notifier
 func (s *Notifier) GetName() notifiers.NotifierName {
-	return notifiers.NotifierName("email")
+	return notifierName
 }
 
 func (s *Notifier) connect() error {

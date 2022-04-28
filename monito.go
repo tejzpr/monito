@@ -74,7 +74,7 @@ func main() {
 			log.Errorf(err, "Error marshalling config for notifier: %s", notifierName)
 			return
 		}
-		_, err = notifiers.InitNotifier(notifierName, jsonBody)
+		_, err = notifiers.InitNotifier(notifiers.NotifierName(notifierName), jsonBody)
 		if err != nil {
 			if err.Error() != "disabled" {
 				log.Errorf(err, "Failed to register notifier: %s", notifierName)
@@ -134,7 +134,7 @@ func main() {
 						log.Debug("Monitor state changed: ", monitor.Name().String())
 						if m.Enabled() {
 							for _, notifyKey := range notifiers.GetRegisteredNotifierNames() {
-								ntObj := notifiersObj[notifyKey]
+								ntObj := notifiersObj[notifyKey.String()]
 
 								jBytes, err := json.Marshal(ntObj)
 								if err != nil {

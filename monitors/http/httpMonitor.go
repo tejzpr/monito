@@ -395,30 +395,6 @@ func (m *Monitor) SetEnableMetrics(enableMetrics bool) {
 	m.metricsEnabled = enableMetrics
 }
 
-// GetRecoveryNotificationBody returns the recovery notification body
-func (m *Monitor) GetRecoveryNotificationBody() string {
-	loc, _ := time.LoadLocation("UTC")
-	return fmt.Sprintf("Recovered in monitor [%s]: %s \nType: %s\nRecovered URL: %s\nRecovered On: %s",
-		m.Name(),
-		m.state.GetCurrent(),
-		m.Type().String(),
-		m.config.URL,
-		m.state.GetStateChangeTime().In(loc).Format(time.RFC1123))
-}
-
-// GetErrorNotificationBody returns the error notification body
-func (m *Monitor) GetErrorNotificationBody(monitorerr error) string {
-	loc, _ := time.LoadLocation("UTC")
-	now := time.Now()
-	return fmt.Sprintf("Failure in monitor [%s]: %s \nType: %s\nFailed URL: %s\nAlerted On: %s\nNext Possible Alert In: %s",
-		m.Name(),
-		monitorerr.Error(),
-		m.Type().String(),
-		m.config.URL,
-		now.In(loc).Format(time.RFC1123),
-		m.notifyRateLimit.String())
-}
-
 // GetNotificationBody returns the notification body
 func (m *Monitor) GetNotificationBody(state *monitors.State) *monitors.NotificationBody {
 	loc, _ := time.LoadLocation("UTC")

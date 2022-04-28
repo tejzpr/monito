@@ -27,12 +27,12 @@ type Notifier interface {
 
 var (
 	notifierMu          sync.RWMutex
-	notifiers           = make(map[string]func(configBody []byte) (Notifier, error))
-	initalizedNotifiers = make(map[string]Notifier)
+	notifiers           = make(map[NotifierName]func(configBody []byte) (Notifier, error))
+	initalizedNotifiers = make(map[NotifierName]Notifier)
 )
 
 // RegisterNotifier registers a notifier
-func RegisterNotifier(name string, initFunc func(configBody []byte) (Notifier, error)) error {
+func RegisterNotifier(name NotifierName, initFunc func(configBody []byte) (Notifier, error)) error {
 	notifierMu.Lock()
 	defer notifierMu.Unlock()
 	if _, dup := notifiers[name]; dup {
@@ -44,7 +44,7 @@ func RegisterNotifier(name string, initFunc func(configBody []byte) (Notifier, e
 }
 
 // InitNotifier returns the notifier with the given name
-func InitNotifier(name string, configBody []byte) (Notifier, error) {
+func InitNotifier(name NotifierName, configBody []byte) (Notifier, error) {
 	notifierMu.RLock()
 	defer notifierMu.RUnlock()
 	if initFunc, ok := notifiers[name]; ok {
@@ -59,7 +59,7 @@ func InitNotifier(name string, configBody []byte) (Notifier, error) {
 }
 
 // GetNotifier returns the notifier with the given name
-func GetNotifier(name string) Notifier {
+func GetNotifier(name NotifierName) Notifier {
 	notifierMu.RLock()
 	defer notifierMu.RUnlock()
 	if notifier, ok := initalizedNotifiers[name]; ok {
@@ -78,10 +78,10 @@ func StopAll() {
 }
 
 // GetRegisteredNotifierNames returns the registered monitor names
-func GetRegisteredNotifierNames() []string {
+func GetRegisteredNotifierNames() []NotifierName {
 	notifierMu.RLock()
 	defer notifierMu.RUnlock()
-	var names []string
+	var names []NotifierName
 	for name := range initalizedNotifiers {
 		names = append(names, name)
 	}

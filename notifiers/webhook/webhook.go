@@ -14,8 +14,10 @@ import (
 	"github.com/tejzpr/monito/notifiers"
 )
 
+var notifierName notifiers.NotifierName = "webhook"
+
 func init() {
-	notifiers.RegisterNotifier("webhook", InitWebHookNotifier)
+	notifiers.RegisterNotifier(notifierName, InitWebHookNotifier)
 }
 
 // SendConfig is the config for the notifier
@@ -32,11 +34,6 @@ type Notifier struct {
 	client  *http.Client
 }
 
-type WebhookResponse struct {
-	Subject string `json:"subject"`
-	Message string `json:"message"`
-}
-
 type webhookNotificationBody struct {
 	Name     string `json:"name"`
 	Type     string `json:"type"`
@@ -45,8 +42,8 @@ type webhookNotificationBody struct {
 	Status   string `json:"status"`
 }
 
-// Notify sends the message by email
-// params[0] is the Mail object
+// Notify sends the message by webhook
+// params[0] is the Notifier object
 func (s *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{}) error {
 	err := s.validate()
 	if err != nil {
@@ -60,6 +57,10 @@ func (s *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{
 		return err
 	}
 
+	if len(sConfig.URL) <= 0 {
+		return fmt.Errorf("no webhook url provided")
+	}
+
 	msgBody := webhookNotificationBody{
 		Name:     nBody.Name.String(),
 		Type:     nBody.Type.String(),
@@ -71,7 +72,7 @@ func (s *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{
 	var jsonStr = []byte{}
 	jsonStr, err = json.Marshal(msgBody)
 	if err != nil {
-		log.Errorf(err, "Error marshalling WebhookResponse")
+		log.Errorf(err, "Error marshalling webhook notification body")
 		return err
 	}
 
@@ -92,7 +93,7 @@ func (s *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{
 
 // GetName returns the name of the notifier
 func (s *Notifier) GetName() notifiers.NotifierName {
-	return notifiers.NotifierName("email")
+	return notifierName
 }
 
 func (s *Notifier) connect() error {

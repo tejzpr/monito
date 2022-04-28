@@ -12,8 +12,10 @@ import (
 	"github.com/tejzpr/monito/notifiers"
 )
 
+var notifierName notifiers.NotifierName = "webex"
+
 func init() {
-	notifiers.RegisterNotifier("webex", InitWebexNotifier)
+	notifiers.RegisterNotifier(notifierName, InitWebexNotifier)
 }
 
 // SendConfig is the config for the Webex notifier
@@ -64,7 +66,7 @@ func (w *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{
 
 // GetName returns the name of the notifier
 func (w *Notifier) GetName() notifiers.NotifierName {
-	return notifiers.NotifierName("webex")
+	return notifierName
 }
 
 func (w *Notifier) connect() error {
