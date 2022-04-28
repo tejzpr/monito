@@ -29,7 +29,7 @@ func (m MonitorType) String() string {
 }
 
 // NotificationHandler is the function that is called when a monitor is notified
-type NotificationHandler func(monitor Monitor, err error)
+// type NotificationHandler func(monitor Monitor, err error)
 
 // JSONBaseConfig is the base JSON config for all monitors
 type JSONBaseConfig struct {
@@ -76,8 +76,19 @@ func (m *JSONBaseConfig) Validate() error {
 	return nil
 }
 
+// NotificationBody is the body of the notification
+type NotificationBody struct {
+	Name     MonitorName `json:"name"`
+	Type     MonitorType `json:"type"`
+	EndPoint string      `json:"endPoint"`
+	Time     time.Time   `json:"time"`
+	Status   StateStatus `json:"status"`
+}
+
 // Monitor is an interface that all monoitors must implement
 type Monitor interface {
+	// Init initializes the monitor
+	Init() error
 	// Run starts the monitor
 	Run(ctx context.Context) error
 	// Stop stops the monitor
@@ -120,34 +131,34 @@ type Monitor interface {
 	TimeOut() time.Duration
 	// SetMaxRetries sets the max retries for the monitor
 	SetMaxRetries(maxRetries int)
-	// SetNotifyHandler handles the notification failure of the monitor
-	// Calls to this function should be non-blocking
-	SetNotifyHandler(notifyHandler NotificationHandler)
 	// SetNotifyRateLimit sets the notify rate limit for the monitor
 	SetNotifyRateLimit(notifyRateLimit time.Duration)
 	// GetState returns the state of the monitor
 	GetState() *State
 	// SetEnableMetrics sets the metrics enabled flag for the monitor
 	SetEnableMetrics(enableMetrics bool)
-	// GetErrorNotificatonBody returns the error notification body
-	GetErrorNotificationBody(monitorerr error) string
-	// GetRecoveryNotificationBody returns the recovery notification body
-	GetRecoveryNotificationBody() string
+	// GetNotificationBody returns the error notification body
+	GetNotificationBody(state *State) *NotificationBody
 }
 
 // StateStatus is the state of the monitor
 type StateStatus string
 
 const (
-	// StateStatusOK indicates that the monitor is in a healthy state
-	StateStatusOK StateStatus = "OK"
-	// StateStatusError indicates that the monitor is in a error state
-	StateStatusError StateStatus = "ERROR"
-	// StateStatusInit indicates that the monitor is in a initializing state
-	StateStatusInit StateStatus = "INIT"
-	// StateStatusStarting indicates that the monitor is in a initializing state
-	StateStatusStarting StateStatus = "STARTING"
+	// StateStatusUP indicates that the monitor is in a healthy state
+	StateStatusUP StateStatus = "UP"
+	// StateStatusDOWN indicates that the monitor is in a down state
+	StateStatusDOWN StateStatus = "DOWN"
+	// StateStatusINIT indicates that the monitor is in a initializing state
+	StateStatusINIT StateStatus = "INIT"
+	// StateStatusSTARTING indicates that the monitor is in a initializing state
+	StateStatusSTARTING StateStatus = "STARTING"
 )
+
+// String returns the string representation of the state
+func (s StateStatus) String() string {
+	return string(s)
+}
 
 // State is the state of the monitor
 type State struct {
@@ -206,33 +217,43 @@ func (s *State) GetCurrent() StateStatus {
 	return s.current
 }
 
-// IsCurrentStatusOK returns if the current status ok
-func (s *State) IsCurrentStatusOK() bool {
-	if s.GetCurrent() == StateStatusOK || s.GetCurrent() == StateStatusInit {
+// IsCurrentStateAFinalState returns true if the current state is a final state
+func (s *State) IsCurrentStateAFinalState() bool {
+	return s.current == StateStatusUP || s.current == StateStatusDOWN
+}
+
+// IsPreviousStateAFinalState returns true if the previous state is a final state
+func (s *State) IsPreviousStateAFinalState() bool {
+	return s.previous == StateStatusUP || s.previous == StateStatusDOWN
+}
+
+// IsCurrentStatusUP returns if the current status up
+func (s *State) IsCurrentStatusUP() bool {
+	if s.GetCurrent() == StateStatusUP || s.GetCurrent() == StateStatusINIT {
 		return true
 	}
 	return false
 }
 
-// IsCurrentStatusERROR returns if the current status error
-func (s *State) IsCurrentStatusERROR() bool {
-	if s.GetCurrent() == StateStatusError || s.GetCurrent() == StateStatusInit {
+// IsCurrentStatusDOWN returns if the current status down
+func (s *State) IsCurrentStatusDOWN() bool {
+	if s.GetCurrent() == StateStatusDOWN || s.GetCurrent() == StateStatusINIT {
 		return true
 	}
 	return false
 }
 
-// IsPreviousStatusOK returns if the previous status ok
-func (s *State) IsPreviousStatusOK() bool {
-	if s.GetPrevious() == StateStatusOK || s.GetPrevious() == StateStatusInit {
+// IsPreviousStatusUP returns if the previous status ok
+func (s *State) IsPreviousStatusUP() bool {
+	if s.GetPrevious() == StateStatusUP || s.GetPrevious() == StateStatusINIT {
 		return true
 	}
 	return false
 }
 
-// IsPreviousStatusERROR returns if the previous status error
-func (s *State) IsPreviousStatusERROR() bool {
-	if s.GetPrevious() == StateStatusError || s.GetPrevious() == StateStatusInit {
+// IsPreviousStatusDOWN returns if the previous status error
+func (s *State) IsPreviousStatusDOWN() bool {
+	if s.GetPrevious() == StateStatusDOWN || s.GetPrevious() == StateStatusINIT {
 		return true
 	}
 	return false
@@ -253,9 +274,9 @@ func (s *State) Update(newState StateStatus) error {
 	s.sMutex.Lock()
 	defer s.sMutex.Unlock()
 	// Validate newState
-	if newState != StateStatusOK &&
-		newState != StateStatusError &&
-		newState != StateStatusInit {
+	if newState != StateStatusUP &&
+		newState != StateStatusDOWN &&
+		newState != StateStatusINIT {
 		return fmt.Errorf("Invalid state: %s", newState)
 	}
 	s.SetPrevious(s.GetCurrent())
@@ -307,12 +328,12 @@ type Logger interface {
 
 var (
 	monitorMu           sync.RWMutex
-	monitors            = make(map[string]func(configBody []byte, notifyHandler NotificationHandler, logger Logger, metricsEnabled bool) (Monitor, error))
+	monitors            = make(map[string]func(configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error))
 	initializedMonitors = make(map[string]Monitor)
 )
 
 // RegisterMonitor registers a monitor
-func RegisterMonitor(name string, initFunc func(configBody []byte, notifyHandler NotificationHandler, logger Logger, metricsEnabled bool) (Monitor, error)) error {
+func RegisterMonitor(name string, initFunc func(configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error)) error {
 	monitorMu.Lock()
 	defer monitorMu.Unlock()
 	if _, dup := monitors[name]; dup {
@@ -324,11 +345,11 @@ func RegisterMonitor(name string, initFunc func(configBody []byte, notifyHandler
 }
 
 // GetMonitor returns a monitor
-func GetMonitor(name string, configBody []byte, notifyHandler NotificationHandler, logger Logger, metricsEnabled bool) (Monitor, error) {
+func GetMonitor(name string, configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error) {
 	monitorMu.RLock()
 	defer monitorMu.RUnlock()
 	if initFunc, ok := monitors[name]; ok {
-		m, err := initFunc(configBody, notifyHandler, logger, metricsEnabled)
+		m, err := initFunc(configBody, logger, metricsEnabled)
 		if err != nil {
 			return nil, err
 		}

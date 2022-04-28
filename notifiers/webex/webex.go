@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	webexteams "github.com/jbogarin/go-cisco-webex-teams/sdk"
 	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/monitors"
 	"github.com/tejzpr/monito/notifiers"
 )
 
@@ -32,7 +34,7 @@ type Notifier struct {
 // Notify sends the message to webex
 // params[0] is the message
 // params[1] is the room id
-func (w *Notifier) Notify(subject string, message string, params ...interface{}) error {
+func (w *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{}) error {
 	if w.client == nil {
 		return fmt.Errorf("webex client is not configured")
 	}
@@ -46,9 +48,9 @@ func (w *Notifier) Notify(subject string, message string, params ...interface{})
 
 	if len(sConfig.RoomID) <= 0 {
 		return fmt.Errorf("room id is not configured")
-	} else if len(message) <= 0 {
-		return fmt.Errorf("message is not configured")
 	}
+
+	message := fmt.Sprintf("Name: %s\nType: %s\nEndpoint: %s\nStatus: %s\nTime: %s\n", nBody.Name, nBody.Type, nBody.EndPoint, nBody.Status, nBody.Time.Format(time.RFC1123))
 
 	_, _, err := w.client.Messages.CreateMessage(&webexteams.MessageCreateRequest{
 		RoomID:   sConfig.RoomID,

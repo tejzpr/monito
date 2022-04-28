@@ -110,7 +110,6 @@ type Monitor struct {
 	metrics               *Metrics
 	notifyLimiter         *rate.Limiter
 	state                 *monitors.State
-	notifyHandler         monitors.NotificationHandler
 	maxConcurrentRequests int
 	maxRetries            int
 	retryCounter          int
@@ -129,17 +128,20 @@ func (m *Monitor) CheckPort() error {
 	return nil
 }
 
-// Run starts the monitor
-func (m *Monitor) Run(ctx context.Context) error {
-	if !m.enabled {
-		return nil
-	}
-
-	if m.name.String() == "" {
-		return errors.New("Name is required")
-	}
+// Init initializes the monitor
+func (m *Monitor) Init() error {
 	var returnerr error
 	m.setupOnce.Do(func() {
+		if !m.enabled {
+			returnerr = errors.New("Monitor is not enabled")
+			return
+		}
+
+		if m.name.String() == "" {
+			returnerr = errors.New("Name is required")
+			return
+		}
+
 		if m.logger == nil {
 			returnerr = errors.New("Logger is not set")
 			return
@@ -152,7 +154,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 
 		if m.state == nil {
 			state := &monitors.State{}
-			state.Init(monitors.StateStatusInit, monitors.StateStatusStarting, time.Now())
+			state.Init(monitors.StateStatusINIT, monitors.StateStatusSTARTING, time.Now())
 			m.state = state
 		}
 		m.stopChannel = make(chan bool)
@@ -160,58 +162,56 @@ func (m *Monitor) Run(ctx context.Context) error {
 			m.maxConcurrentRequests = 1
 			m.sem = semaphore.NewWeighted(int64(1))
 		}
-
-		m.logger.Infof("Started monitor %s", m.name)
-		for {
-			select {
-			case <-ctx.Done():
-				m.logger.Debugf("Stopping monitor context cancelled%s", m.name)
-				return
-			case <-m.stopChannel:
-				m.logger.Debugf("Stopping monitor %s", m.name)
-				return
-			case <-time.After(m.interval):
-				m.logger.Debugf("Aquire semaphore %s", m.name)
-				if err := m.sem.Acquire(ctx, 1); err != nil {
-					m.logger.Error(err)
-					continue
-				}
-				m.logger.Debugf("Running monitor: %s", m.name)
-				err := m.run()
-				if err != nil {
-					if m.state.IsCurrentStatusOK() {
-						m.metrics.ServiceDown()
-						m.state.Update(monitors.StateStatusError)
-					}
-					m.logger.Debugf("Error running monitor [%s]: %s", m.name, err.Error())
-					if m.maxRetries > 0 && m.retryCounter < m.maxRetries {
-						m.retryCounter++
-						m.logger.Infof("Retrying monitor: %s", m.name)
-						continue
-					} else if m.maxRetries > 0 && m.retryCounter >= m.maxRetries {
-						m.logger.Infof("Max retries reached for monitor: %s", m.name)
-						returnerr = err
-						return
-					} else {
-						continue
-					}
-				} else {
-					if m.state.IsCurrentStatusERROR() {
-						m.metrics.ServiceUp()
-						m.state.Update(monitors.StateStatusOK)
-						m.notifyHandler(m, nil)
-						m.resetNotifyLimiter()
-					}
-				}
-			}
-		}
 	})
 	return returnerr
 }
 
-// SetNotifyHandler sets the notify handler for the monitor
-func (m *Monitor) SetNotifyHandler(notifyHandler monitors.NotificationHandler) {
-	m.notifyHandler = notifyHandler
+// Run starts the monitor
+func (m *Monitor) Run(ctx context.Context) error {
+	m.logger.Infof("Started monitor %s", m.name)
+	for {
+		select {
+		case <-ctx.Done():
+			m.logger.Debugf("Stopping monitor context cancelled%s", m.name)
+			return nil
+		case <-m.stopChannel:
+			m.logger.Debugf("Stopping monitor %s", m.name)
+			return nil
+		case <-time.After(m.interval):
+			m.logger.Debugf("Aquire semaphore %s", m.name)
+			if err := m.sem.Acquire(ctx, 1); err != nil {
+				m.logger.Error(err)
+				continue
+			}
+			m.logger.Debugf("Running monitor: %s", m.name)
+			err := m.run()
+			if err != nil {
+				if m.state.IsCurrentStatusUP() {
+					m.metrics.ServiceDown()
+					m.state.Update(monitors.StateStatusDOWN)
+				}
+				m.logger.Debugf("Error running monitor [%s]: %s", m.name, err.Error())
+				if m.maxRetries > 0 && m.retryCounter < m.maxRetries {
+					m.retryCounter++
+					m.logger.Infof("Retrying monitor: %s", m.name)
+					continue
+				} else if m.maxRetries > 0 && m.retryCounter >= m.maxRetries {
+					m.logger.Infof("Max retries reached for monitor: %s", m.name)
+					return err
+				} else {
+					continue
+				}
+			} else {
+				if m.state.IsCurrentStatusDOWN() {
+					m.metrics.ServiceUp()
+					m.state.Update(monitors.StateStatusUP)
+					m.resetNotifyLimiter()
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // SetGroup sets the group for the monitor
@@ -227,16 +227,9 @@ func (m *Monitor) Group() string {
 // HandleFailure handles a failure
 func (m *Monitor) HandleFailure(err error) error {
 	m.logger.Debugf("Monitor failed with error %s", err.Error())
-	if m.state.IsCurrentStatusOK() {
+	if m.state.IsCurrentStatusUP() {
 		m.metrics.ServiceDown()
-		m.state.Update(monitors.StateStatusError)
-	}
-	if m.notifyHandler != nil {
-		if m.notifyLimiter == nil {
-			m.notifyHandler(m, err)
-		} else if m.notifyLimiter.Allow() {
-			m.notifyHandler(m, err)
-		}
+		m.state.Update(monitors.StateStatusDOWN)
 	}
 	return err
 }
@@ -426,6 +419,19 @@ func (m *Monitor) GetErrorNotificationBody(monitorerr error) string {
 		m.notifyRateLimit.String())
 }
 
+// GetNotificationBody returns the notification body
+func (m *Monitor) GetNotificationBody(state *monitors.State) *monitors.NotificationBody {
+	loc, _ := time.LoadLocation("UTC")
+	now := time.Now()
+	return &monitors.NotificationBody{
+		Name:     m.Name(),
+		Type:     m.Type(),
+		EndPoint: fmt.Sprintf("%s://%s:%d", m.config.Protocol.String(), m.config.Host, m.config.Port),
+		Time:     now.In(loc),
+		Status:   state.GetCurrent(),
+	}
+}
+
 // JSONConfig is the config for the Ping monitor
 type JSONConfig struct {
 	monitors.JSONBaseConfig
@@ -447,7 +453,7 @@ func (m *JSONConfig) monitorFieldsValidate() error {
 }
 
 // newPortMonitor creates a new Port monitor
-func newPortMonitor(configBody []byte, notifyHandler monitors.NotificationHandler, logger monitors.Logger, metricsEnabled bool) (monitors.Monitor, error) {
+func newPortMonitor(configBody []byte, logger monitors.Logger, metricsEnabled bool) (monitors.Monitor, error) {
 	var mConfig JSONConfig
 	if err := json.Unmarshal(configBody, &mConfig); err != nil {
 		log.Errorf(err, "Error unmarshalling config for monitor: http")
@@ -482,7 +488,6 @@ func newPortMonitor(configBody []byte, notifyHandler monitors.NotificationHandle
 	portMonitor.SetMaxConcurrentRequests(mConfig.MaxConcurrentRequests)
 	portMonitor.SetMaxRetries(mConfig.MaxRetries)
 	portMonitor.SetNotifyRateLimit(mConfig.NotifyRateLimit.Duration)
-	portMonitor.SetNotifyHandler(notifyHandler)
 	portMonitor.SetEnableMetrics(metricsEnabled)
 	return portMonitor, nil
 }

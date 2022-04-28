@@ -7,8 +7,10 @@ import (
 	"net/smtp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/monitors"
 	"github.com/tejzpr/monito/notifiers"
 )
 
@@ -16,7 +18,7 @@ func init() {
 	notifiers.RegisterNotifier("smtp", InitSMTPNotifier)
 }
 
-// SendConfig is the config for the Webex notifier
+// SendConfig is the config for the smtp notifier
 type SendConfig struct {
 	To  []string `json:"to"`
 	Cc  []string `json:"cc"`
@@ -53,7 +55,7 @@ type Notifier struct {
 
 // Notify sends the message by email
 // params[0] is the Mail object
-func (s *Notifier) Notify(subject string, message string, params ...interface{}) error {
+func (s *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{}) error {
 	err := s.validate()
 	if err != nil {
 		return err
@@ -68,11 +70,10 @@ func (s *Notifier) Notify(subject string, message string, params ...interface{})
 
 	if len(sConfig.To) <= 0 {
 		return fmt.Errorf("no recipients")
-	} else if len(message) <= 0 {
-		return fmt.Errorf("no body")
-	} else if len(subject) <= 0 {
-		return fmt.Errorf("no subject")
 	}
+
+	subject := fmt.Sprintf("%s: %s", nBody.Name, nBody.Status)
+	message := fmt.Sprintf("Name: %s\nType: %s\nEndpoint: %s\nStatus: %s\nTime: %s\n", nBody.Name, nBody.Type, nBody.EndPoint, nBody.Status, nBody.Time.Format(time.RFC1123))
 
 	messageBody := sConfig.BuildMessage(s.sender, subject, message)
 	if err := s.client.Mail(s.sender); err != nil {

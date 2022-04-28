@@ -118,11 +118,11 @@
 					<label class="form-check-label" for="inlineRadio2">View Services that have status <span class="badge bg-secondary rounded-pill">INIT</span> </label>
 				</div>
 				<div class="form-check">
-					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="ok" on:change={onChange} checked={selected==='ok'}>
+					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="up" on:change={onChange} checked={selected==='up'}>
 					<label class="form-check-label" for="inlineRadio3">View Services that have status <span class="badge bg-success rounded-pill">UP</span> </label>
 				</div>
 				<div class="form-check">
-					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio4" value="error" on:change={onChange} checked={selected==='error'}>
+					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio4" value="down" on:change={onChange} checked={selected==='down'}>
 					<label class="form-check-label" for="inlineRadio4">View Services that have status <span class="badge bg-danger rounded-pill">DOWN</span></label>
 				</div>
 			</div>
@@ -136,7 +136,7 @@
 							</li>
 					{#each monitors as monitor}
 					
-						{#if (typeof monitorData[monitor.name] !== 'undefined' && monitorData[monitor.name]["status"] === "OK") && (selected === 'ok' || selected === 'all')}
+						{#if (typeof monitorData[monitor.name] !== 'undefined' && monitorData[monitor.name]["status"] === "UP") && (selected === 'up' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
 								<div class="ms-2 me-auto">
 									<div class="fw-bold">{monitor.name}<span class="badge bg-info rounded-pill group-pill" title="Group - {monitor.group}">{monitor.group}</span></div>
@@ -144,7 +144,7 @@
 								</div>
 								<span class="badge monitor bg-success rounded-pill" title="Status changed to UP {typeof monitorData[monitor.name]!== 'undefined'?moment(monitorData[monitor.name]["timestamp"]).fromNow() : ""}">UP</span>
 							</li>
-						{:else if (typeof monitorData[monitor.name] !== 'undefined' && monitorData[monitor.name]["status"] === "ERROR") && (selected === 'error' || selected === 'all')}
+						{:else if (typeof monitorData[monitor.name] !== 'undefined' && monitorData[monitor.name]["status"] === "DOWN") && (selected === 'down' || selected === 'all')}
 							<li class="list-group-item d-flex justify-content-between align-items-start">
 								<div class="ms-2 me-auto">
 									<div class="fw-bold">{monitor.name}<span class="badge bg-info rounded-pill group-pill" title="Group - {monitor.group}">{monitor.group}</span></div>

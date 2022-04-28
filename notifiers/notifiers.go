@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/monitors"
 )
 
 var symbolsRegexp = regexp.MustCompile(`[^\w]`)
@@ -19,7 +20,7 @@ func (m NotifierName) String() string {
 
 // Notifier is the interface for all notifiers
 type Notifier interface {
-	Notify(subject string, message string, params ...interface{}) error
+	Notify(nBody *monitors.NotificationBody, params ...interface{}) error
 	GetName() NotifierName
 	Close() error
 }
