@@ -77,7 +77,18 @@ func (s *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{
 	}
 
 	// Data
-	w, err := s.client.Post(sConfig.URL, "application/json", bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("POST", sConfig.URL, bytes.NewBuffer(jsonStr))
+	if err != nil {
+		return fmt.Errorf("Got error %s", err.Error())
+	}
+
+	// Headers
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range sConfig.Headers {
+		req.Header.Set(k, v)
+	}
+
+	w, err := s.client.Do(req)
 
 	if err != nil {
 		return err

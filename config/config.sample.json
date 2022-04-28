@@ -64,7 +64,10 @@
                         "bcc": []
                     },
                     "webhook": {
-                        "url": ""
+                        "url": "",
+                        "headers": {
+                            "test-header": "test1"
+                        }
                     }
                 }
             }
@@ -92,7 +95,10 @@
                         "bcc": []
                     },
                     "webhook": {
-                        "url": ""
+                        "url": "",
+                        "headers": {
+                            "test-header": "test1"
+                        }
                     }
                 }
             }
