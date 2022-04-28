@@ -247,7 +247,13 @@ func main() {
 			Description string `json:"description"`
 			Group       string `json:"group"`
 		}
+		type monitorWSStatus struct {
+			Status    monitors.StateStatus `json:"status"`
+			TimeStamp time.Time            `json:"timestamp"`
+			Group     string               `json:"group"`
+		}
 		type monitorStatus struct {
+			Name      string               `json:"name"`
 			Status    monitors.StateStatus `json:"status"`
 			TimeStamp time.Time            `json:"timestamp"`
 			Group     string               `json:"group"`
@@ -275,6 +281,7 @@ func main() {
 			for _, monitor := range configuredMonitors {
 				if monitor.Enabled() {
 					monitorList = append(monitorList, &monitorStatus{
+						Name:      monitor.Name().String(),
 						Status:    monitor.GetState().GetCurrent(),
 						TimeStamp: monitor.GetState().GetStateChangeTime(),
 						Group:     monitor.Group(),
@@ -317,7 +324,7 @@ func main() {
 			if len(key) > 0 && strings.ToLower(string(key)) == "all" {
 				for monitorName, monitor := range configuredMonitors {
 					if monitor.Enabled() {
-						monitorsStatus[monitorName] = &monitorStatus{
+						monitorsStatus[monitorName] = &monitorWSStatus{
 							Status:    monitor.GetState().GetCurrent(),
 							TimeStamp: monitor.GetState().GetStateChangeTime(),
 							Group:     monitor.Group(),
@@ -357,7 +364,7 @@ func main() {
 						monitor.GetState().Subscribe(rid, func(state *monitors.State) {
 							if monitor.Enabled() {
 								singleMonitorStatus := make(map[string]interface{})
-								singleMonitorStatus[monitor.Name().String()] = &monitorStatus{
+								singleMonitorStatus[monitor.Name().String()] = &monitorWSStatus{
 									Status:    state.GetCurrent(),
 									TimeStamp: state.GetStateChangeTime(),
 									Group:     monitor.Group(),
