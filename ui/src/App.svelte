@@ -5,7 +5,15 @@
 	import moment from "moment";
 	import { onMount } from 'svelte';
 	import store from './store.js';
-	
+	import { SvelteToast } from '@zerodevx/svelte-toast'
+
+	const toastOptions = { 
+		initial: 0, 
+		intro: { 
+			y: -64 
+		} 
+	};
+
 	$: monitorData = new Map();
 	$: notifyerror = null;
 	const API_URL = "/api/";
@@ -88,6 +96,9 @@
 		{notifyerror}
 	</div>
 	{/if}
+	<div class="wrap">
+		<SvelteToast {toastOptions} />
+	</div>
 	{#if loading == true}
 		<div class="content">
 			<div class="container-fluid body-main">
@@ -197,5 +208,23 @@
 	}
 	.form-check-label, .form-check-input {
 		cursor: pointer;
+	}
+
+	.wrap {
+		--toastContainerTop: 0.5rem;
+		--toastContainerRight: 0.5rem;
+		--toastContainerBottom: auto;
+		--toastContainerLeft: 0.5rem;
+		--toastWidth: 100%;
+		--toastMinHeight: 2rem;
+		--toastPadding: 0 0.5rem;
+		font-size: 0.875rem;
+	}
+	@media (min-width: 40rem) {
+		.wrap {
+		--toastContainerRight: auto;
+		--toastContainerLeft: calc(50vw - 20rem);
+		--toastWidth: 40rem;
+		}
 	}
 </style>

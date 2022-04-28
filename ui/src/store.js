@@ -1,10 +1,13 @@
 import { writable } from 'svelte/store';
+import { toast } from '@zerodevx/svelte-toast';
 
 const orgStore = writable({
     orgName: orgName,
     orgLogoURI: orgLogoURI,
     orgURI: orgURI,
 });
+  
+const appMap = new Map([]);
 const messageStore = writable(new Map());
 const wsStatus = writable('');
 const messageSocketStatus = writable('');
@@ -31,7 +34,31 @@ socket.addEventListener('close', function (event) {
 socket.addEventListener('message', function (event) {
     try {
         if (event.data.length > 0) {
-            messageStore.set(new Map(Object.entries(JSON.parse(event.data))));
+            let msgMap = new Map(Object.entries(JSON.parse(event.data)))
+            messageStore.set(msgMap);
+            
+            for (let [key, value] of msgMap) {
+                if (appMap.has(key) && appMap.get(key) !== "INIT") {               
+                    if (value.status === 'UP') {
+                        toast.push(`${key} is ${value.status}`, {
+                            pausable: true,
+                            theme: {
+                            '--toastBackground': '#48BB78',
+                            '--toastBarBackground': '#2F855A'
+                            }
+                        })
+                    } else if (value.status === 'DOWN') {
+                        toast.push(`${key} is ${value.status}`, {
+                            pausable: true,
+                            theme: {
+                            '--toastBackground': '#F56565',
+                            '--toastBarBackground': '#A82E2E'
+                            }
+                        })
+                    }
+                }
+                appMap.set(key, value.status);
+            }
         }
     } catch (e) {
         console.log(e);
