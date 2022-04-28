@@ -125,16 +125,16 @@
 					<label class="form-check-label" for="inlineRadio1">View All Services</label>
 				</div>
 				<div class="form-check">
-					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="init" on:change={onChange} checked={selected==='init'}>
-					<label class="form-check-label" for="inlineRadio2">View Services that have status <span class="badge bg-secondary rounded-pill">INIT</span> </label>
-				</div>
-				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="up" on:change={onChange} checked={selected==='up'}>
 					<label class="form-check-label" for="inlineRadio3">View Services that have status <span class="badge bg-success rounded-pill">UP</span> </label>
 				</div>
 				<div class="form-check">
 					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio4" value="down" on:change={onChange} checked={selected==='down'}>
 					<label class="form-check-label" for="inlineRadio4">View Services that have status <span class="badge bg-danger rounded-pill">DOWN</span></label>
+				</div>
+				<div class="form-check">
+					<input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="init" on:change={onChange} checked={selected==='init'}>
+					<label class="form-check-label" for="inlineRadio2">View Services that have status <span class="badge bg-secondary rounded-pill">INIT</span> </label>
 				</div>
 			</div>
 			<div class="container body-main">
