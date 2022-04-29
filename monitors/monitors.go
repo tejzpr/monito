@@ -333,14 +333,14 @@ var (
 )
 
 // RegisterMonitor registers a monitor
-func RegisterMonitor(name string, initFunc func(configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error)) error {
+func RegisterMonitor(monitorType MonitorType, initFunc func(configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error)) error {
 	monitorMu.Lock()
 	defer monitorMu.Unlock()
-	if _, dup := monitors[name]; dup {
-		return fmt.Errorf("monitor is already registered: %s", name)
+	if _, dup := monitors[monitorType.String()]; dup {
+		return fmt.Errorf("monitor is already registered: %s", monitorType.String())
 	}
-	log.Info("Registering monitor: ", name)
-	monitors[name] = initFunc
+	log.Info("Registering monitor: ", monitorType.String())
+	monitors[monitorType.String()] = initFunc
 	return nil
 }
 

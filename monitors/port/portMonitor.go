@@ -13,9 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/metrics"
 	"github.com/tejzpr/monito/monitors"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
@@ -24,6 +23,8 @@ import (
 
 // NetworkProtocol returns the network protocol
 type NetworkProtocol string
+
+var monitorType monitors.MonitorType = "port"
 
 const (
 	// TCP is the tcp protocol
@@ -59,35 +60,6 @@ type Config struct {
 	Protocol NetworkProtocol `json:"protocol"`
 }
 
-// Metrics the metrics for the monitor
-type Metrics struct {
-	ServiceStatusGauge prometheus.Gauge
-}
-
-// StartSericeStatusGauge initializes the service status gauge
-func (pm *Metrics) StartSericeStatusGauge(name string, group string) {
-	if group != "" {
-		name = fmt.Sprintf("%s_%s", group, name)
-	}
-	pm.ServiceStatusGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: "monito",
-		Subsystem: "port_metrics",
-		Name:      "is_service_up_" + name,
-		Help:      "Provides status of the service, 0 = down, 1 = up",
-	})
-	pm.ServiceStatusGauge.Set(1)
-}
-
-// ServiceDown handles the service down
-func (pm *Metrics) ServiceDown() {
-	pm.ServiceStatusGauge.Dec()
-}
-
-// ServiceUp handles the service down
-func (pm *Metrics) ServiceUp() {
-	pm.ServiceStatusGauge.Inc()
-}
-
 // Monitor is a monitor that monitors ports
 // it implements the Monitor interface
 type Monitor struct {
@@ -107,7 +79,7 @@ type Monitor struct {
 	notifyRate            rate.Limit
 	notifyRateLimit       time.Duration
 	metricsEnabled        bool
-	metrics               *Metrics
+	metrics               *metrics.Metrics
 	notifyLimiter         *rate.Limiter
 	state                 *monitors.State
 	maxConcurrentRequests int
@@ -148,8 +120,9 @@ func (m *Monitor) Init() error {
 		}
 
 		if m.metricsEnabled {
-			m.metrics = &Metrics{}
-			m.metrics.StartSericeStatusGauge(m.name.String(), m.group)
+			m.metrics = &metrics.Metrics{}
+			m.metrics.StartServiceStatusGauge(m.name.String(), m.group, monitorType)
+			m.metrics.StartLatencyGauge(m.name.String(), m.group, monitorType)
 		}
 
 		if m.state == nil {
@@ -184,6 +157,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 				continue
 			}
 			m.logger.Debugf("Running monitor: %s", m.name)
+			start := time.Now()
 			err := m.run()
 			if err != nil {
 				if m.state.IsCurrentStatusUP() {
@@ -202,6 +176,8 @@ func (m *Monitor) Run(ctx context.Context) error {
 					continue
 				}
 			} else {
+				elapsed := time.Since(start)
+				m.metrics.RecordLatency(elapsed)
 				if m.state.IsCurrentStatusDOWN() {
 					m.metrics.ServiceUp()
 					m.state.Update(monitors.StateStatusUP)
@@ -275,7 +251,7 @@ func (m *Monitor) Name() monitors.MonitorName {
 
 // Type returns the type of the monitor
 func (m *Monitor) Type() monitors.MonitorType {
-	return monitors.MonitorType("port")
+	return monitorType
 }
 
 // SetName sets the name of the monitor
@@ -465,7 +441,7 @@ func newPortMonitor(configBody []byte, logger monitors.Logger, metricsEnabled bo
 }
 
 func init() {
-	err := monitors.RegisterMonitor("port", newPortMonitor)
+	err := monitors.RegisterMonitor(monitorType, newPortMonitor)
 	if err != nil {
 		panic(err)
 	}
