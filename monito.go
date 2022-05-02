@@ -177,9 +177,14 @@ func main() {
 
 	// Setup Metrics
 	metricsPort := 8430
+	metricsHost := "localhost"
 	isMetricsEnabled := false
 	if viper.GetInt("metrics.port") > 0 {
 		metricsPort = viper.GetInt("metrics.port")
+	}
+
+	if viper.GetString("metrics.host") != "" {
+		metricsHost = viper.GetString("metrics.host")
 	}
 
 	webApp := echo.New()
@@ -226,7 +231,7 @@ func main() {
 		}))
 	}
 	root := webApp.Group("")
-	metricsServerString := fmt.Sprintf("127.0.0.1:%d", metricsPort)
+	metricsServerString := fmt.Sprintf("%s:%d", metricsHost, metricsPort)
 	if viper.GetBool("metrics.pprof.enable") {
 		isMetricsEnabled = true
 		pprof.GetPPROF(root)

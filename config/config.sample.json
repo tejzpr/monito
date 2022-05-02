@@ -17,7 +17,8 @@
         "pprof": {
             "enable": false
         },
-        "port": 8430
+        "port": 8430,
+        "host": "0.0.0.0"
     },
     "notifiers": {
         "webex": {
