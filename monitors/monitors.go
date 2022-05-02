@@ -332,7 +332,7 @@ var (
 	initializedMonitors = make(map[string]Monitor)
 )
 
-// RegisterMonitor registers a monitor
+// RegisterMonitor takes a monitor type and a function that returns a monitor and adds it to a map of monitors
 func RegisterMonitor(monitorType MonitorType, initFunc func(configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error)) error {
 	monitorMu.Lock()
 	defer monitorMu.Unlock()
@@ -344,7 +344,8 @@ func RegisterMonitor(monitorType MonitorType, initFunc func(configBody []byte, l
 	return nil
 }
 
-// GetMonitor returns a monitor
+// GetMonitor takes a monitor name, a config body, a logger, and a boolean indicating whether metrics are
+// enabled, and returns a monitor and an error
 func GetMonitor(name string, configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error) {
 	monitorMu.RLock()
 	defer monitorMu.RUnlock()
@@ -363,7 +364,7 @@ func GetMonitor(name string, configBody []byte, logger Logger, metricsEnabled bo
 	return nil, fmt.Errorf("monitor is not registered: %s", name)
 }
 
-// CheckIfMonitorRegistered checks the monitor
+// CheckIfMonitorRegistered checks if a monitor is registered by name.
 func CheckIfMonitorRegistered(name string) bool {
 	monitorMu.RLock()
 	defer monitorMu.RUnlock()
@@ -371,7 +372,7 @@ func CheckIfMonitorRegistered(name string) bool {
 	return ok
 }
 
-// GetRegisteredMonitorNames returns the registered monitor names
+// GetRegisteredMonitorNames returns a slice of strings containing the names of all the registered monitors
 func GetRegisteredMonitorNames() []string {
 	monitorMu.RLock()
 	defer monitorMu.RUnlock()
