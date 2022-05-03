@@ -180,9 +180,9 @@ func (m *BaseMonitor) SetJitterFactor(jitterFactor int) {
 }
 
 // SetJitterFactor sets the jitter factor for the monitor
-func (m *BaseMonitor) getJitterFactor() int {
-	rand.Seed(time.Now().UnixNano())
-	return rand.Intn(m.JitterFactor + 1)
+func (m *BaseMonitor) getJitter() time.Duration {
+	j := time.Duration(m.JitterFactor) * time.Millisecond
+	return j + time.Duration(rand.Intn(int(j/10)))
 }
 
 // SetType sets the type of the monitor
@@ -331,7 +331,7 @@ func (m *BaseMonitor) Run(ctx context.Context) error {
 		case <-m.StopChannel:
 			m.Logger.Debugf("Stopping monitor %s", m.Name)
 			return nil
-		case <-time.After(m.Interval + (time.Duration(m.getJitterFactor()) * time.Second)):
+		case <-time.After(m.Interval + m.getJitter()):
 			m.Logger.Debugf("Aquire semaphore %s", m.Name)
 			if err := m.Semaphore.Acquire(ctx, 1); err != nil {
 				m.Logger.Error(err)
