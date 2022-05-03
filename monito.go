@@ -433,7 +433,10 @@ func main() {
 	if isMetricsEnabled {
 		go func() {
 			log.Info("Metrics enabled on port: ", metricsPort)
-			webApp.Logger.Fatal(webApp.Start(metricsServerString))
+			err := webApp.Start(metricsServerString)
+			if err != nil {
+				log.Debug("Metrics server failed to start: ", err.Error())
+			}
 		}()
 	}
 
