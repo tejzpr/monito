@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/fs"
 	"net/http"
 
 	"os"
@@ -26,6 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
 	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/utils"
 	"github.com/tejzpr/monito/utils/pprof"
 	"github.com/tejzpr/monito/utils/templates"
 	"github.com/ziflex/lecho/v3"
@@ -418,7 +418,7 @@ func main() {
 			return nil
 		})
 		if viper.GetBool("metrics.monitostatus.ui") {
-			assetHandler := http.FileServer(getFileSystem(isLive))
+			assetHandler := http.FileServer(utils.GetFileSystem(isLive, public))
 			root.GET("/static/*", echo.WrapHandler(http.StripPrefix("/static/", assetHandler)))
 			root.GET("/", func(c echo.Context) error {
 				return c.Render(http.StatusOK, "index.html", map[string]interface{}{
@@ -473,19 +473,4 @@ func main() {
 		log.Error(err, "Failed to gracefully shutdown web server")
 	}
 	log.Info("Exiting.")
-}
-
-// It returns a file system that either uses the live file system or the embedded one
-func getFileSystem(useOS bool) http.FileSystem {
-	if useOS {
-		log.Info("using live mode")
-		return http.FS(os.DirFS("public/static"))
-	}
-
-	fsys, err := fs.Sub(public, "public/static")
-	if err != nil {
-		panic(err)
-	}
-
-	return http.FS(fsys)
 }
