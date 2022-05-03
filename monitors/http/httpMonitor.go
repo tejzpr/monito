@@ -146,6 +146,7 @@ func (m *Monitor) GetNotificationBody(state *monitors.State) *monitors.Notificat
 		EndPoint: m.Config.URL,
 		Time:     now.In(loc),
 		Status:   state.GetCurrent(),
+		Error:    state.GetError(),
 	}
 }
 

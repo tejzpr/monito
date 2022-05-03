@@ -200,7 +200,7 @@ func (m *BaseMonitor) HandleFailure(err error) error {
 	m.Logger.Debugf("Monitor failed with error %s", err.Error())
 	if m.State.IsCurrentStatusUP() {
 		m.PrometheusMetrics.ServiceDown()
-		m.State.Update(StateStatusDOWN)
+		m.State.Update(StateStatusDOWN, err)
 	}
 	return err
 }
@@ -343,7 +343,7 @@ func (m *BaseMonitor) Run(ctx context.Context) error {
 			if err != nil {
 				if m.State.IsCurrentStatusUP() {
 					m.PrometheusMetrics.ServiceDown()
-					m.State.Update(StateStatusDOWN)
+					m.State.Update(StateStatusDOWN, err)
 				}
 				m.Logger.Debugf("Error running monitor [%s]: %s", m.Name, err.Error())
 				if m.MaxRetries > 0 && m.RetryCounter < m.MaxRetries {
@@ -361,7 +361,7 @@ func (m *BaseMonitor) Run(ctx context.Context) error {
 				m.PrometheusMetrics.RecordLatency(elapsed)
 				if m.State.IsCurrentStatusDOWN() {
 					m.PrometheusMetrics.ServiceUp()
-					m.State.Update(StateStatusUP)
+					m.State.Update(StateStatusUP, nil)
 					m.ResetNotifyLimiter()
 				}
 			}

@@ -75,7 +75,7 @@ func (s *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{
 	}
 
 	subject := fmt.Sprintf("%s: %s", nBody.Name, nBody.Status)
-	message := fmt.Sprintf("Name: %s\nType: %s\nEndpoint: %s\nStatus: %s\nTime: %s\n", nBody.Name, nBody.Type, nBody.EndPoint, nBody.Status, nBody.Time.Format(time.RFC1123))
+	message := fmt.Sprintf("Name: %s\nType: %s\nEndpoint: %s\nStatus: %s\nDetails: %s\n\nTime: %s\n", nBody.Name, nBody.Type, nBody.EndPoint, nBody.Status, nBody.GetErrorString(), nBody.Time.Format(time.RFC1123))
 
 	messageBody := sConfig.BuildMessage(s.sender, subject, message)
 	if err := s.client.Mail(s.sender); err != nil {

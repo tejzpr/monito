@@ -145,6 +145,7 @@ func (m *Monitor) GetNotificationBody(state *monitors.State) *monitors.Notificat
 		EndPoint: fmt.Sprintf("%s://%s:%d", m.Config.Protocol.String(), m.Config.Host, m.Config.Port),
 		Time:     now.In(loc),
 		Status:   state.GetCurrent(),
+		Error:    state.GetError(),
 	}
 }
 

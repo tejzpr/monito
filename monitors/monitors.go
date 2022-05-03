@@ -73,6 +73,60 @@ type NotificationBody struct {
 	EndPoint string            `json:"endPoint"`
 	Time     time.Time         `json:"time"`
 	Status   StateStatus       `json:"status"`
+	Error    error             `json:"error,omitempty"`
+}
+
+// GetName returns the name of the monitor from NotificationBody
+func (n *NotificationBody) GetName() MonitorName {
+	return n.Name
+}
+
+// GetNameString returns the name of the monitor from NotificationBody
+func (n *NotificationBody) GetNameString() string {
+	return string(n.Name)
+}
+
+// GetType returns the type of the monitor from NotificationBody
+func (n *NotificationBody) GetType() types.MonitorType {
+	return n.Type
+}
+
+// GetTypeString returns the type of the monitor from NotificationBody
+func (n *NotificationBody) GetTypeString() string {
+	return string(n.Type)
+}
+
+// GetEndPoint returns the end point for the state from NotificationBody
+func (n *NotificationBody) GetEndPoint() string {
+	return n.EndPoint
+}
+
+// GetTime returns the time of the state change from NotificationBody
+func (n *NotificationBody) GetTime() time.Time {
+	return n.Time
+}
+
+// GetStatus returns the status of the state from NotificationBody
+func (n *NotificationBody) GetStatus() StateStatus {
+	return n.Status
+}
+
+// GetStatusString returns the status string for the state from NotificationBody
+func (n *NotificationBody) GetStatusString() string {
+	return string(n.Status)
+}
+
+// GetError returns the error for the state from NotificationBody
+func (n *NotificationBody) GetError() error {
+	return n.Error
+}
+
+// GetErrorString returns the error string for the state from NotificationBody
+func (n *NotificationBody) GetErrorString() string {
+	if n.Error != nil {
+		return n.Error.Error()
+	}
+	return ""
 }
 
 // StateStatus is the state of the monitor
@@ -101,6 +155,7 @@ type State struct {
 	stateChangeTime time.Time
 	sMutex          sync.Mutex
 	stateChan       chan *State
+	error           error
 	subscribers     map[string]func(*State)
 	initialized     bool
 }
@@ -132,7 +187,7 @@ func (s *State) Get() *State {
 }
 
 // SetPrevious sets the previous state
-func (s *State) SetPrevious(previous StateStatus) {
+func (s *State) setPrevious(previous StateStatus) {
 	s.previous = previous
 }
 
@@ -142,13 +197,31 @@ func (s *State) GetPrevious() StateStatus {
 }
 
 // SetCurrent sets the current state
-func (s *State) SetCurrent(current StateStatus) {
+func (s *State) setCurrent(current StateStatus) {
 	s.current = current
 }
 
 // GetCurrent returns the current state
 func (s *State) GetCurrent() StateStatus {
 	return s.current
+}
+
+// setError sets the error for the state
+func (s *State) setError(err error) {
+	s.error = err
+}
+
+// GetError returns the error for the state
+func (s *State) GetError() error {
+	return s.error
+}
+
+// GetErrorString returns the error string for the state
+func (s *State) GetErrorString() string {
+	if s.error != nil {
+		return s.error.Error()
+	}
+	return ""
 }
 
 // IsCurrentStateAFinalState returns true if the current state is a final state
@@ -193,8 +266,8 @@ func (s *State) IsPreviousStatusDOWN() bool {
 	return false
 }
 
-// SetStateChangeTime sets the state change time
-func (s *State) SetStateChangeTime(stateChangeTime time.Time) {
+// setStateChangeTime sets the state change time
+func (s *State) setStateChangeTime(stateChangeTime time.Time) {
 	s.stateChangeTime = stateChangeTime
 }
 
@@ -204,7 +277,7 @@ func (s *State) GetStateChangeTime() time.Time {
 }
 
 // Update updates the state of the monitor
-func (s *State) Update(newState StateStatus) error {
+func (s *State) Update(newState StateStatus, err error) error {
 	s.sMutex.Lock()
 	defer s.sMutex.Unlock()
 	// Validate newState
@@ -213,9 +286,10 @@ func (s *State) Update(newState StateStatus) error {
 		newState != StateStatusINIT {
 		return fmt.Errorf("Invalid state: %s", newState)
 	}
-	s.SetPrevious(s.GetCurrent())
-	s.SetCurrent(newState)
-	s.SetStateChangeTime(time.Now())
+	s.setPrevious(s.GetCurrent())
+	s.setError(err)
+	s.setCurrent(newState)
+	s.setStateChangeTime(time.Now())
 	s.stateChan <- s
 	return nil
 }
