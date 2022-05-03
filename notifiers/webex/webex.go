@@ -52,7 +52,7 @@ func (w *Notifier) Notify(nBody *monitors.NotificationBody, params ...interface{
 		return fmt.Errorf("room id is not configured")
 	}
 
-	message := fmt.Sprintf("Name: %s\nType: %s\nEndpoint: %s\nStatus: %s\nDetails: %s\n\nTime: %s\n", nBody.Name, nBody.Type, nBody.EndPoint, nBody.Status, nBody.GetErrorString(), nBody.Time.Format(time.RFC1123))
+	message := fmt.Sprintf("Name: %s\nType: %s\nEndpoint: %s\nStatus: %s\nDetails: %s\n\nTime: %s\n\n------------------------------------------------------------------", nBody.Name, nBody.Type, nBody.EndPoint, nBody.GetStatusWithIcon(), nBody.GetErrorString(), nBody.Time.Format(time.RFC1123))
 
 	_, _, err := w.client.Messages.CreateMessage(&webexteams.MessageCreateRequest{
 		RoomID:   sConfig.RoomID,

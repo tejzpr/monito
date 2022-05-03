@@ -111,6 +111,14 @@ func (n *NotificationBody) GetStatus() StateStatus {
 	return n.Status
 }
 
+// GetStatusWithIcon returns the current state with icon from NotificationBody
+func (n *NotificationBody) GetStatusWithIcon() string {
+	if n.Status == StateStatusUP {
+		return fmt.Sprintf("%s %s", n.Status.String(), " 🟢")
+	}
+	return fmt.Sprintf("%s %s", n.Status.String(), " 🔴")
+}
+
 // GetStatusString returns the status string for the state from NotificationBody
 func (n *NotificationBody) GetStatusString() string {
 	return string(n.Status)
