@@ -105,6 +105,7 @@ type BaseMonitor struct {
 }
 
 // Initialize the base monitor
+// Call this method in all Init() methods of all monitors that are composed of BaseMonitor
 func (m *BaseMonitor) Initialize() error {
 	var returnerr error
 

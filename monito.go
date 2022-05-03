@@ -475,6 +475,7 @@ func main() {
 	log.Info("Exiting.")
 }
 
+// It returns a file system that either uses the live file system or the embedded one
 func getFileSystem(useOS bool) http.FileSystem {
 	if useOS {
 		log.Info("using live mode")
