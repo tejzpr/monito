@@ -298,6 +298,7 @@ func main() {
 		})
 		root.GET("/api/monitors/ws", func(c echo.Context) error {
 			conn, _, _, err := ws.UpgradeHTTP(c.Request(), c.Response())
+			var stopOnce sync.Once
 			if err != nil {
 				log.Error(err, "WS: Failed to upgrade websocket connection")
 				return err
@@ -312,10 +313,12 @@ func main() {
 			var wg sync.WaitGroup
 			wg.Add(1)
 			stop := func() {
-				for _, monitor := range configuredMonitors {
-					monitor.GetState().UnSubscribe(rid)
-				}
-				wg.Done()
+				stopOnce.Do(func() {
+					for _, monitor := range configuredMonitors {
+						monitor.GetState().UnSubscribe(rid)
+					}
+					wg.Done()
+				})
 			}
 
 			key, op, err := wsutil.ReadClientData(conn)
@@ -353,6 +356,7 @@ func main() {
 				return err
 			}
 
+			// Reading the data from the websocket connection.
 			go func() {
 				for {
 					_, _, err := wsutil.ReadClientData(conn)
@@ -363,6 +367,7 @@ func main() {
 				}
 			}()
 
+			// Subscribing to the monitor state changes and sending the state changes to the client.
 			go func() {
 				for monitorName, monitor := range configuredMonitors {
 					func(monitorName string, monitor monitors.Monitor) {
@@ -387,6 +392,14 @@ func main() {
 							}
 						})
 					}(monitorName, monitor)
+				}
+			}()
+			// goroutine that will wait for the duration of the timeout and then call the stop
+			// function.
+			go func() {
+				if viper.GetDuration("metrics.monitostatus.wsTTL") > 0 {
+					<-time.NewTimer(viper.GetDuration("metrics.monitostatus.wsTTL")).C
+					stop()
 				}
 			}()
 			wg.Wait()

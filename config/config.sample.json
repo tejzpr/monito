@@ -12,6 +12,7 @@
         },
         "monitostatus": {
             "enable": true,
+            "wsTTL": "0s",
             "ui": true
         },
         "pprof": {
