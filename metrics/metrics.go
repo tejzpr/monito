@@ -6,23 +6,23 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/tejzpr/monito/monitors"
+	"github.com/tejzpr/monito/types"
 )
 
-// Metrics the metrics for the monitor
-type Metrics struct {
+// PrometheusMetrics the metrics for the monitor
+type PrometheusMetrics struct {
 	ServiceStatusGauge prometheus.Gauge
 	LatencyGauge       prometheus.Gauge
 	LatencyHistogram   prometheus.Histogram
 }
 
 // StartServiceStatusGauge initializes the service status gauge
-func (hm *Metrics) StartServiceStatusGauge(name string, group string, monitorName monitors.MonitorType) {
+func (hm *PrometheusMetrics) StartServiceStatusGauge(name string, group string, monitorName types.MonitorType) {
 	if group != "" {
 		name = fmt.Sprintf("%s_%s", group, name)
 	}
 	if monitorName.String() == "" {
-		monitorName = monitors.MonitorType("generic")
+		monitorName = types.MonitorType("generic")
 	}
 	hm.ServiceStatusGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "monito",
@@ -33,12 +33,12 @@ func (hm *Metrics) StartServiceStatusGauge(name string, group string, monitorNam
 }
 
 // StartLatencyGauge initializes the latency histogram
-func (hm *Metrics) StartLatencyGauge(name string, group string, monitorName monitors.MonitorType) {
+func (hm *PrometheusMetrics) StartLatencyGauge(name string, group string, monitorName types.MonitorType) {
 	if group != "" {
 		name = fmt.Sprintf("%s_%s", group, name)
 	}
 	if monitorName.String() == "" {
-		monitorName = monitors.MonitorType("generic")
+		monitorName = types.MonitorType("generic")
 	}
 	hm.LatencyGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "monito",
@@ -49,21 +49,21 @@ func (hm *Metrics) StartLatencyGauge(name string, group string, monitorName moni
 }
 
 // RecordLatency records the latency
-func (hm *Metrics) RecordLatency(latency time.Duration) {
+func (hm *PrometheusMetrics) RecordLatency(latency time.Duration) {
 	if hm != nil && hm.LatencyGauge != nil {
 		hm.LatencyGauge.Set(latency.Seconds())
 	}
 }
 
 // ServiceDown handles the service down
-func (hm *Metrics) ServiceDown() {
+func (hm *PrometheusMetrics) ServiceDown() {
 	if hm != nil && hm.ServiceStatusGauge != nil {
 		hm.ServiceStatusGauge.Set(0)
 	}
 }
 
 // ServiceUp handles the service down
-func (hm *Metrics) ServiceUp() {
+func (hm *PrometheusMetrics) ServiceUp() {
 	if hm != nil && hm.ServiceStatusGauge != nil {
 		hm.ServiceStatusGauge.Set(1)
 	}

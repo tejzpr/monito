@@ -97,18 +97,23 @@ func main() {
 			continue
 		}
 		mConfigArray := (monitorConfigs).([]interface{})
+
 		for _, monitorConfig := range mConfigArray {
 			jsonBody, err := json.Marshal(monitorConfig)
 			if err != nil {
 				log.Errorf(err, "Error marshalling config for monitor: %s", monitorName)
 				return
 			}
-			func(monitorConfig interface{}, jsonBody []byte) {
+			jitter := len(mConfigArray)
+			if jitter > 10 {
+				jitter = 10
+			}
+			func(monitorConfig interface{}, jitter int, jsonBody []byte) {
 				mNotificationObj := (monitorConfig).(map[string]interface{})
 				notifyDetails := mNotificationObj["notifyDetails"]
 				notifiersObj := notifyDetails.(map[string]interface{})
 
-				monitor, err := monitors.GetMonitor(monitorName, jsonBody, log.Logger(), viper.GetBool("metrics.prometheus.enable"))
+				monitor, err := monitors.GetMonitor(monitorName, jsonBody, log.Logger(), jitter, viper.GetBool("metrics.prometheus.enable"))
 				if err != nil {
 					log.Fatalf("fatal error creating monitor: %s \n", err)
 				}
@@ -116,23 +121,23 @@ func main() {
 				monitorWG.Add(1)
 				go func(m monitors.Monitor) error {
 					defer func() {
-						log.Info("Stopped monitor: ", monitor.Name().String())
+						log.Info("Stopped monitor: ", monitor.GetName().String())
 						monitorWG.Done()
 					}()
-					if !monitor.Enabled() {
-						log.Info("Monitor is disabled: ", monitor.Name().String())
+					if !monitor.IsEnabled() {
+						log.Info("Monitor is disabled: ", monitor.GetName().String())
 						return nil
 					}
-					log.Info("Initializing monitor: ", monitor.Name().String())
+					log.Info("Initializing monitor: ", monitor.GetName().String())
 					err = m.Init()
 					if err != nil {
-						log.Errorf(err, "Failed to initialize monitor: %s", monitor.Name().String())
+						log.Errorf(err, "Failed to initialize monitor: %s", monitor.GetName().String())
 						return err
 					}
 
-					m.GetState().Subscribe(m.Name().String(), func(state *monitors.State) {
-						log.Debug("Monitor state changed: ", monitor.Name().String())
-						if m.Enabled() {
+					m.GetState().Subscribe(m.GetName().String(), func(state *monitors.State) {
+						log.Debug("Monitor state changed: ", monitor.GetName().String())
+						if m.IsEnabled() {
 							for _, notifyKey := range notifiers.GetRegisteredNotifierNames() {
 								ntObj := notifiersObj[notifyKey.String()]
 
@@ -145,7 +150,7 @@ func main() {
 								if state.IsPreviousStateAFinalState() {
 									nt := notifiers.GetNotifier(notifyKey)
 									if nt == nil {
-										log.Errorf(err, "Failed to get smtp notifier for monitor: %s", m.Name())
+										log.Errorf(err, "Failed to get smtp notifier for monitor: %s", m.GetName())
 										continue
 									}
 
@@ -156,17 +161,17 @@ func main() {
 						}
 					})
 
-					log.Info("Running monitor: ", monitor.Name().String())
+					log.Info("Running monitor: ", monitor.GetName().String())
 					err := monitor.Run(context.Background())
 					if err != nil {
-						log.Errorf(err, "Failed to run monitor: %s", monitor.Name())
+						log.Errorf(err, "Failed to run monitor: %s", monitor.GetName())
 						return err
 					}
 					return nil
 				}(monitor)
 
-				configuredMonitors[monitor.Name().String()] = monitor
-			}(monitorConfig, jsonBody)
+				configuredMonitors[monitor.GetName().String()] = monitor
+			}(monitorConfig, jitter, jsonBody)
 		}
 	}
 
@@ -268,11 +273,11 @@ func main() {
 
 			monitorList := make([]*monitorDetail, 0)
 			for _, monitor := range configuredMonitors {
-				if monitor.Enabled() {
+				if monitor.IsEnabled() {
 					monitorList = append(monitorList, &monitorDetail{
-						Name:        monitor.Name().String(),
-						Description: monitor.Description(),
-						Group:       monitor.Group(),
+						Name:        monitor.GetName().String(),
+						Description: monitor.GetDescription(),
+						Group:       monitor.GetGroup(),
 					})
 				}
 			}
@@ -284,12 +289,12 @@ func main() {
 
 			monitorList := make([]*monitorStatus, 0)
 			for _, monitor := range configuredMonitors {
-				if monitor.Enabled() {
+				if monitor.IsEnabled() {
 					monitorList = append(monitorList, &monitorStatus{
-						Name:      monitor.Name().String(),
+						Name:      monitor.GetName().String(),
 						Status:    monitor.GetState().GetCurrent(),
 						TimeStamp: monitor.GetState().GetStateChangeTime(),
-						Group:     monitor.Group(),
+						Group:     monitor.GetGroup(),
 					})
 				}
 			}
@@ -331,11 +336,11 @@ func main() {
 			monitorsStatus := make(map[string]interface{})
 			if len(key) > 0 && strings.ToLower(string(key)) == "all" {
 				for monitorName, monitor := range configuredMonitors {
-					if monitor.Enabled() {
+					if monitor.IsEnabled() {
 						monitorsStatus[monitorName] = &monitorWSStatus{
 							Status:    monitor.GetState().GetCurrent(),
 							TimeStamp: monitor.GetState().GetStateChangeTime(),
-							Group:     monitor.Group(),
+							Group:     monitor.GetGroup(),
 						}
 					}
 				}
@@ -372,12 +377,12 @@ func main() {
 				for monitorName, monitor := range configuredMonitors {
 					func(monitorName string, monitor monitors.Monitor) {
 						monitor.GetState().Subscribe(rid, func(state *monitors.State) {
-							if monitor.Enabled() {
+							if monitor.IsEnabled() {
 								singleMonitorStatus := make(map[string]interface{})
-								singleMonitorStatus[monitor.Name().String()] = &monitorWSStatus{
+								singleMonitorStatus[monitor.GetName().String()] = &monitorWSStatus{
 									Status:    state.GetCurrent(),
 									TimeStamp: state.GetStateChangeTime(),
-									Group:     monitor.Group(),
+									Group:     monitor.GetGroup(),
 								}
 								b, err := json.Marshal(singleMonitorStatus)
 								if err != nil {
@@ -396,12 +401,18 @@ func main() {
 			}()
 			// goroutine that will wait for the duration of the timeout and then call the stop
 			// function.
-			go func() {
-				if viper.GetDuration("metrics.monitostatus.wsTTL") > 0 {
-					<-time.NewTimer(viper.GetDuration("metrics.monitostatus.wsTTL")).C
+			if viper.GetDuration("metrics.monitostatus.wsTTL") > 0 {
+				go func() {
+					wsTTL := viper.GetDuration("metrics.monitostatus.wsTTL")
+					if wsTTL < 30*time.Second {
+						wsTTL = 30 * time.Second
+						log.Info("WS: Setting wsTTL to the minimum value of 30 seconds")
+					}
+					<-time.NewTimer(wsTTL).C
 					stop()
-				}
-			}()
+				}()
+			}
+
 			wg.Wait()
 			log.Debug("WS: Connection closed: ", rid)
 			return nil
@@ -434,7 +445,7 @@ func main() {
 
 		go func() {
 			for _, monitor := range configuredMonitors {
-				if monitor.Enabled() {
+				if monitor.IsEnabled() {
 					monitor.Stop()
 				}
 			}

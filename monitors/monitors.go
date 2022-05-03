@@ -1,13 +1,13 @@
 package monitors
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/tejzpr/monito/log"
+	"github.com/tejzpr/monito/types"
 	"github.com/tejzpr/monito/utils"
 )
 
@@ -20,16 +20,6 @@ type MonitorName string
 func (m MonitorName) String() string {
 	return symbolsRegexp.ReplaceAllString(string(m), "_")
 }
-
-// MonitorType is a string that represents the type of the monitor
-type MonitorType string
-
-func (m MonitorType) String() string {
-	return symbolsRegexp.ReplaceAllString(string(m), "_")
-}
-
-// NotificationHandler is the function that is called when a monitor is notified
-// type NotificationHandler func(monitor Monitor, err error)
 
 // JSONBaseConfig is the base JSON config for all monitors
 type JSONBaseConfig struct {
@@ -78,67 +68,11 @@ func (m *JSONBaseConfig) Validate() error {
 
 // NotificationBody is the body of the notification
 type NotificationBody struct {
-	Name     MonitorName `json:"name"`
-	Type     MonitorType `json:"type"`
-	EndPoint string      `json:"endPoint"`
-	Time     time.Time   `json:"time"`
-	Status   StateStatus `json:"status"`
-}
-
-// Monitor is an interface that all monoitors must implement
-type Monitor interface {
-	// Init initializes the monitor
-	Init() error
-	// Run starts the monitor
-	Run(ctx context.Context) error
-	// Stop stops the monitor
-	Stop()
-	// Name returns the name of the monitor
-	Name() MonitorName
-	// SetName sets the name of the monitor
-	SetName(name MonitorName)
-	// Group returns the group of the monitor
-	Group() string
-	// SetGroup sets the group of the monitor
-	SetGroup(group string)
-	// Description returns the description of the monitor
-	Description() string
-	// SetDescription sets the description of the monitor
-	SetDescription(description string)
-	// Type returns the type of the monitor
-	Type() MonitorType
-	// SetConfig sets the config for the monitor
-	SetConfig(config interface{}) error
-	// Config returns the config for the monitor
-	Config() interface{}
-	// SetLogger sets the logger for the monitor
-	SetLogger(logger Logger)
-	// Logger returns the logger for the monitor
-	Logger() Logger
-	// SetInterval sets the interval for the monitor
-	SetInterval(interval time.Duration)
-	// Interval returns the interval for the monitor
-	Interval() time.Duration
-	// SetEnabled sets the enabled flag for the monitor
-	SetEnabled(enabled bool)
-	// Enabled returns the enabled flag for the monitor
-	Enabled() bool
-	// SetMaxConcurrentRequests sets the max concurrent requests for the monitor
-	SetMaxConcurrentRequests(maxConcurrentRequests int)
-	// SetTimeOut sets the timeout for the monitor
-	SetTimeOut(timeOut time.Duration)
-	// TimeOut returns the timeout for the monitor
-	TimeOut() time.Duration
-	// SetMaxRetries sets the max retries for the monitor
-	SetMaxRetries(maxRetries int)
-	// SetNotifyRateLimit sets the notify rate limit for the monitor
-	SetNotifyRateLimit(notifyRateLimit time.Duration)
-	// GetState returns the state of the monitor
-	GetState() *State
-	// SetEnableMetrics sets the metrics enabled flag for the monitor
-	SetEnableMetrics(enableMetrics bool)
-	// GetNotificationBody returns the error notification body
-	GetNotificationBody(state *State) *NotificationBody
+	Name     MonitorName       `json:"name"`
+	Type     types.MonitorType `json:"type"`
+	EndPoint string            `json:"endPoint"`
+	Time     time.Time         `json:"time"`
+	Status   StateStatus       `json:"status"`
 }
 
 // StateStatus is the state of the monitor
@@ -328,12 +262,12 @@ type Logger interface {
 
 var (
 	monitorMu           sync.RWMutex
-	monitors            = make(map[string]func(configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error))
+	monitors            = make(map[string]func(configBody []byte, logger Logger, jitterFactor int, prometheusMetricsEnabled bool) (Monitor, error))
 	initializedMonitors = make(map[string]Monitor)
 )
 
 // RegisterMonitor takes a monitor type and a function that returns a monitor and adds it to a map of monitors
-func RegisterMonitor(monitorType MonitorType, initFunc func(configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error)) error {
+func RegisterMonitor(monitorType types.MonitorType, initFunc func(configBody []byte, logger Logger, jitterFactor int, prometheusMetricsEnabled bool) (Monitor, error)) error {
 	monitorMu.Lock()
 	defer monitorMu.Unlock()
 	if _, dup := monitors[monitorType.String()]; dup {
@@ -346,18 +280,18 @@ func RegisterMonitor(monitorType MonitorType, initFunc func(configBody []byte, l
 
 // GetMonitor takes a monitor name, a config body, a logger, and a boolean indicating whether metrics are
 // enabled, and returns a monitor and an error
-func GetMonitor(name string, configBody []byte, logger Logger, metricsEnabled bool) (Monitor, error) {
+func GetMonitor(name string, configBody []byte, logger Logger, jitterFactor int, prometheusMetricsEnabled bool) (Monitor, error) {
 	monitorMu.RLock()
 	defer monitorMu.RUnlock()
 	if initFunc, ok := monitors[name]; ok {
-		m, err := initFunc(configBody, logger, metricsEnabled)
+		m, err := initFunc(configBody, logger, jitterFactor, prometheusMetricsEnabled)
 		if err != nil {
 			return nil, err
 		}
-		if initializedMonitors[m.Name().String()] != nil {
-			m = initializedMonitors[m.Name().String()]
+		if initializedMonitors[m.GetName().String()] != nil {
+			m = initializedMonitors[m.GetName().String()]
 		} else {
-			initializedMonitors[m.Name().String()] = m
+			initializedMonitors[m.GetName().String()] = m
 		}
 		return m, nil
 	}
