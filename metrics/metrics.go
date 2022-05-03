@@ -32,7 +32,7 @@ func (hm *PrometheusMetrics) StartServiceStatusGauge(name string, group string, 
 	})
 }
 
-// StartLatencyGauge initializes the latency histogram
+// StartLatencyGauge initializes the latency gauge
 func (hm *PrometheusMetrics) StartLatencyGauge(name string, group string, monitorName types.MonitorType) {
 	if group != "" {
 		name = fmt.Sprintf("%s_%s", group, name)
@@ -62,7 +62,7 @@ func (hm *PrometheusMetrics) ServiceDown() {
 	}
 }
 
-// ServiceUp handles the service down
+// ServiceUp handles the service up
 func (hm *PrometheusMetrics) ServiceUp() {
 	if hm != nil && hm.ServiceStatusGauge != nil {
 		hm.ServiceStatusGauge.Set(1)
