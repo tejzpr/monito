@@ -1,2 +1,2 @@
-# Monito - A remote server liveness probe
-Monito is a light weight remote server liveness probe.
+# Monito - Server status pages with liveness monitoring.
+Monito provides light weight remote server status pages with liveness monitoring.
