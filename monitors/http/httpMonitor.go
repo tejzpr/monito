@@ -110,6 +110,7 @@ func (m *Monitor) Process() error {
 			return m.HandleFailure(err)
 		}
 		if string(body) != m.Config.ExpectedBody {
+			log.Debugf("Response body: %s", string(body))
 			return m.HandleFailure(errors.New("Expected body does not match"))
 		}
 	}
