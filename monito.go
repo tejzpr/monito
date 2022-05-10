@@ -236,6 +236,9 @@ func main() {
 		}))
 	}
 	root := webApp.Group("")
+	root.GET("/ping", func(c echo.Context) error {
+		return c.String(http.StatusOK, "pong")
+	})
 	metricsServerString := fmt.Sprintf("%s:%d", metricsHost, metricsPort)
 	if viper.GetBool("metrics.pprof.enable") {
 		isMetricsEnabled = true
