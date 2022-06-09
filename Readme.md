@@ -1,3 +1,8 @@
+[![Open Source](https://img.shields.io/badge/Open%20Source-%20-green?logo=open-source-initiative&logoColor=white&color=blue&labelColor=blue)](https://en.wikipedia.org/wiki/Open_source)
+[![Golang](https://img.shields.io/badge/-Go%20Lang-blue?logo=go&logoColor=white)](https://golang.org)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tejzpr/monito)](https://goreportcard.com/report/github.com/tejzpr/monito)
+[![CodeQL](https://github.com/tejzpr/monito/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/tejzpr/monito/actions/workflows/codeql-analysis.yml)
+
 # Monito
 ![Monito](https://github.com/tejzpr/monito/blob/main/public/static/favicon/android-chrome-192x192.png?raw=true)
 
