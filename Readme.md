@@ -1,7 +1,7 @@
 # Monito
 ![Monito](https://github.com/tejzpr/monito/blob/main/public/static/favicon/android-chrome-192x192.png?raw=true)
 
-Monito provides a configuration based light weight remote server status page with liveness monitoring and notification. 
+Monito provides a configuration based light weight remote server status page with liveness monitoring and notifications. 
 
 # Setup
 Download and install a release executable and update the config/config.json file.
