@@ -9,7 +9,7 @@
 Monito provides a configuration based light weight remote server status page with liveness monitoring and notifications. 
 
 # Setup
-Download and install a release executable and update the config/config.json file.
+Download and install a [release executable](https://github.com/tejzpr/monito/releases) and update the config/config.json file.
 
 # Setup using Docker
 Update config.json file and save it in a secure location. The following command assumes that the config file is in **/data/config/config.json** After running the command Monito will be available on port 8080
