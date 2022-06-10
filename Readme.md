@@ -4,7 +4,7 @@
 [![CodeQL](https://github.com/tejzpr/monito/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/tejzpr/monito/actions/workflows/codeql-analysis.yml)
 
 # Monito
-![Monito](https://github.com/tejzpr/monito/blob/main/public/static/favicon/android-chrome-192x192.png?raw=true)
+![Monito](https://github.com/tejzpr/monito/blob/main/public/static/favicon/favicon-32x32.png?raw=true)
 
 Monito provides a configuration based light weight remote server status page with liveness monitoring and notifications. 
 
