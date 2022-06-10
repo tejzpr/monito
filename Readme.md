@@ -8,6 +8,13 @@
 
 Monito provides a configuration based light weight remote server status page with liveness monitoring and notifications. 
 
+# Features
+* On / Off status for a wide variety of endpoints
+* Extensible monitoring and notification components based on database/sql style plugin model
+* Built-in support for notifications via Email, Webex and Webhooks.
+* Support for dynamic dashboards via Prometheus
+* Public real-time status page
+
 # Setup
 Download and install a [release executable](https://github.com/tejzpr/monito/releases) and update the [config/config.json](https://github.com/tejzpr/monito/tree/main/config) file.
 
@@ -17,11 +24,7 @@ Update config.json file and save it in a secure location. The following command 
 docker run -v /data/config/config.json:/app/config/config.json -p 8080:8430 ghcr.io/tejzpr/monito:latest
 ```
 
-# Features
-* Support for notifications via Email, Webex or almost any notification platfrom.
-* Support for dynamic dashboards via Prometheus
-* On / Off status for a wide variety of endpoints
-* Public real-time status page
+
 
 # Screenshot
 ![Screenshot](https://github.com/tejzpr/monito/blob/main/screenshots/sshot-1.png?raw=true)
