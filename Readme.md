@@ -9,7 +9,7 @@
 Monito provides a configuration based light weight remote server status page with liveness monitoring and notifications. 
 
 # Features
-* On / Off status HTTP or TCP / UDP endpoints
+* On / Off status for HTTP or TCP / UDP endpoints
 * Extensible monitoring and notification components based on [database/sql](https://eli.thegreenplace.net/2019/design-patterns-in-gos-databasesql-package/) style compiled plugin model
 * Built-in support for notifications via Email, Webex and Webhooks.
 * Support for dynamic dashboards via Prometheus
