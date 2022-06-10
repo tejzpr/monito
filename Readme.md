@@ -9,7 +9,7 @@
 Monito provides a configuration based light weight remote server status page with liveness monitoring and notifications. 
 
 # Features
-* On / Off status for a wide variety of endpoints
+* On / Off status HTTP or TCP / UDP endpoints
 * Extensible monitoring and notification components based on database/sql style plugin model
 * Built-in support for notifications via Email, Webex and Webhooks.
 * Support for dynamic dashboards via Prometheus
